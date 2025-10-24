@@ -88,6 +88,11 @@ public class MainActivity extends BaseActivity {
                                                 Intent intent = new Intent(MainActivity.this, MenuActivity.class);
                                                 startActivity(intent);
                                             } else {
+                                                //guardar usuario y contraseña para reingresar luego de crear paciente rapido
+                                                SharedPreferences.Editor editor2 = preferences.edit();
+                                                editor2.putString("profEmail", email);
+                                                editor2.putString("profPassword", password);
+                                                editor2.apply();
                                                 // Redirigir a la actividad del profesional de salud
                                                 Intent intent = new Intent(MainActivity.this, NotPatientActivity.class);
                                                 startActivity(intent);

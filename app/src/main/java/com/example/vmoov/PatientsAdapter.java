@@ -60,6 +60,8 @@ public class PatientsAdapter extends RecyclerView.Adapter<PatientsAdapter.ViewHo
                     intent = new Intent(context, PrescriptionActivity.class);
                 } else if (item.getItemId() == R.id.view_patient_info) {
                     intent = new Intent(context, PatientInfoActivity.class);
+                } else if (item.getItemId() == R.id.view_unique_code) {
+                    intent = new Intent(context, ShowUniqueCodeActivity.class);
                 }
 
                 if (intent != null) {

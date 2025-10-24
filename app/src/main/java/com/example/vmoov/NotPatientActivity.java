@@ -84,13 +84,19 @@ public class NotPatientActivity extends BaseActivity implements RecyclerViewInte
         });
     }
 
+
     private void fetchPatientNames(String userId) {
         DatabaseReference healthProfessionalRef = FirebaseDatabase.getInstance().getReference()
                 .child("healthProfessionals").child(userId).child("patients");
 
-        healthProfessionalRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        // Escuchar los cambios en tiempo real
+        healthProfessionalRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                // 🧹 Limpiar listas antes de volver a cargar
+                patientNames.clear();
+                patientIDs.clear();
+
                 if (dataSnapshot.exists()) {
                     for (DataSnapshot patientSnapshot : dataSnapshot.getChildren()) {
                         String patientId = patientSnapshot.getKey();
@@ -99,6 +105,7 @@ public class NotPatientActivity extends BaseActivity implements RecyclerViewInte
                     }
                 } else {
                     Log.d("NotPatientActivity", "No se encontraron pacientes vinculados para el userId: " + userId);
+                    patientsAdapter.notifyDataSetChanged(); // limpia la vista si ya no hay pacientes
                 }
             }
 
@@ -165,7 +172,7 @@ public class NotPatientActivity extends BaseActivity implements RecyclerViewInte
             }
         });
 
-        // ✅ **Nuevo botón para ir a HealthProfessionalInfoActivity**
+        // ✅ Botón para ir a HealthProfessionalInfoActivity
         ImageButton addInfoButton = findViewById(R.id.buttonAddInfo);
         addInfoButton.setOnClickListener(new View.OnClickListener() {
             @Override

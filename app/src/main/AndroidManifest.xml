@@ -135,6 +135,14 @@
 
         <activity android:name=".EditInfoActivity"
             android:exported="false"/>
+        <activity
+            android:name=".PatientCreatedActivity"
+            android:exported="false"/>
+
+        <activity
+            android:name=".ShowUniqueCodeActivity"
+            android:exported="false"/>
+
     </application>
 
 </manifest>

@@ -31,21 +31,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.15"/>
+        app:layout_constraintGuide_percent="0.16" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/middle_guideline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.5"/>
+        app:layout_constraintGuide_percent="0.55" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/bottom_guideline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.95" />
+        app:layout_constraintGuide_percent="1.0" />
 
     <!-- Card CREAR PACIENTE -->
     <androidx.cardview.widget.CardView
@@ -82,7 +82,24 @@
                 android:gravity="center"
                 android:text="Crear paciente rápido"
                 android:textColor="@color/violet"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="2dp" />
+
+            <Spinner
+                android:id="@+id/center_spinner"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:spinnerMode="dropdown"
+                android:layout_marginBottom="16dp"/>
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Ingrese iniciales del paciente para crearlo rápidamente "
+                android:textSize="16sp"
+                android:textColor="@color/violet"
+                android:layout_marginBottom="16dp"/>
 
             <EditText
                 android:id="@+id/initials_text"
@@ -91,7 +108,7 @@
                 android:layout_height="40dp"
                 android:gravity="center"
                 android:textSize="14sp"
-                android:hint="Iniciales"
+                android:hint="Iniciales del paciente"
                 android:textColor="@color/blue"
                 android:textColorHint="@color/blue"
                 android:layout_marginBottom="12dp" />
@@ -156,16 +173,25 @@
                 android:gravity="center"
                 android:text="Vincular paciente"
                 android:textColor="@color/violet"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="2dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Ingrese código único de paciente ya existente para agregarlo a su lista"
+                android:textSize="16sp"
+                android:textColor="@color/violet"
+                android:layout_marginBottom="16dp"/>
 
             <EditText
                 android:id="@+id/uniqueCode_text"
                 style="@style/input"
-                android:layout_width="200dp"
+                android:layout_width="260dp"
                 android:layout_height="40dp"
                 android:gravity="center"
                 android:textSize="14sp"
-                android:hint="Código único"
+                android:hint="Código único del paciente"
                 android:textColor="@color/blue"
                 android:textColorHint="@color/blue"
                 android:layout_marginBottom="12dp" />
