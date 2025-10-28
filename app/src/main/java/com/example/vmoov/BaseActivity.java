@@ -145,7 +145,7 @@ public class BaseActivity extends AppCompatActivity {
         }
 
         databaseReference = FirebaseDatabase.getInstance()
-                .getReference("patientmetrics").child(userId).child("gameplaydata").child("game1");
+                .getReference("patientmetrics").child(userId).child("gameplaydata");
 
         valueEventListener = new ValueEventListener() {
             @Override
@@ -163,7 +163,7 @@ public class BaseActivity extends AppCompatActivity {
                 }
 
                 if (lastSnapshot != null) {
-                    boolean nuevaPartida = detectarNuevaPartida(lastSnapshot, snapshot);
+                    boolean nuevaPartida = detectarNuevaSesion(lastSnapshot, snapshot);
                     if (!nuevaPartida) {
                         Log.d(TAG, "🔵 No hay nuevas partidas en game1. No se muestra alerta.");
                         return;
@@ -229,27 +229,36 @@ public class BaseActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private boolean detectarNuevaPartida(DataSnapshot oldSnapshot, DataSnapshot newSnapshot) {
-        for (DataSnapshot newChild : newSnapshot.getChildren()) {
-            String gameId = newChild.getKey();
-            if (!oldSnapshot.hasChild(gameId)) {
-                Log.d(TAG, "🆕 Nueva partida detectada: " + gameId);
-                return true;
+    private boolean detectarNuevaSesion(DataSnapshot oldSnapshot, DataSnapshot newSnapshot) {
+        for (DataSnapshot gameNode : newSnapshot.getChildren()) { // cada juego
+            String gameName = gameNode.getKey();
+            DataSnapshot oldGameNode = oldSnapshot.child(gameName);
+
+            for (DataSnapshot sessionNode : gameNode.child("sessions").getChildren()) {
+                String sessionId = sessionNode.getKey();
+                if (!oldGameNode.child("sessions").hasChild(sessionId)) {
+                    Log.d(TAG, "🆕 Nueva sesión detectada en " + gameName + ": " + sessionId);
+                    return true;
+                }
             }
         }
         return false;
     }
 
+
     private long obtenerUltimaSesion(DataSnapshot snapshot) {
         long latestTimestamp = 0;
-        for (DataSnapshot gameNode : snapshot.getChildren()) {
-            Long startTime = gameNode.child("startTime").getValue(Long.class);
-            if (startTime != null && startTime > latestTimestamp) {
-                latestTimestamp = startTime;
+        for (DataSnapshot gameNode : snapshot.getChildren()) { // cada juego
+            for (DataSnapshot sessionNode : gameNode.child("sessions").getChildren()) {
+                Long startTime = sessionNode.child("results").child("startTime").getValue(Long.class);
+                if (startTime != null && startTime > latestTimestamp) {
+                    latestTimestamp = startTime;
+                }
             }
         }
         return latestTimestamp;
     }
+
 
     private void guardarUltimaSesion(long timestamp) {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
@@ -276,79 +285,68 @@ public class BaseActivity extends AppCompatActivity {
     private void setupRequestListener(String userId) {
         DatabaseReference requestsRef = FirebaseDatabase.getInstance().getReference("requests");
 
-        requestsRef.addChildEventListener(new ChildEventListener() {
+        // 🔹 Filtrar solo las solicitudes donde patientId == currentUser
+        Query patientRequestsQuery = requestsRef.orderByChild("patientId").equalTo(userId);
+
+        patientRequestsQuery.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
-                String patientId = snapshot.child("patientId").getValue(String.class);
                 String professionalId = snapshot.child("professionalId").getValue(String.class);
+                String requestId = snapshot.getKey();
 
-                Log.d(TAG, "🛠️ Revisando solicitud: " + patientId + " vs " + userId);
+                if (professionalId == null || requestId == null) return;
 
-                if (patientId != null && patientId.equals(userId)) {
-                    Log.d(TAG, "🔔 Nueva solicitud de contacto recibida.");
-                    showContactRequestAlert(snapshot.getKey(), professionalId, patientId);
-                }
+                // Obtener nombre del profesional
+                DatabaseReference profRef = FirebaseDatabase.getInstance().getReference("users").child(professionalId);
+                profRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot profSnap) {
+                        String firstName = profSnap.child("firstName").getValue(String.class);
+                        String lastName = profSnap.child("lastName").getValue(String.class);
+                        String professionalName = (firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "");
+
+                        // Mostrar alerta y notificación solo al paciente
+                        showContactRequestAlert(requestId, professionalId, userId, professionalName);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Log.e(TAG, "❌ Error al obtener datos del profesional: " + error.getMessage());
+                    }
+                });
             }
 
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {}
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
+            @Override public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {}
+            @Override public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
+            @Override public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
+            @Override public void onCancelled(@NonNull DatabaseError error) {
                 Log.e(TAG, "❌ Error en listener de solicitudes: " + error.getMessage());
             }
         });
     }
 
+    private void showContactRequestAlert(String requestId, String professionalId, String patientId, String professionalName) {
+        runOnUiThread(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(BaseActivity.this);
+            builder.setTitle("Solicitud de Contacto")
+                    .setMessage(professionalName + " desea vincularse contigo. ¿Aceptas?")
+                    .setPositiveButton("Aceptar", (dialog, which) -> {
+                        acceptContactRequest(requestId, professionalId, patientId);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Rechazar", (dialog, which) -> {
+                        rejectContactRequest(requestId);
+                        dialog.dismiss();
+                    })
+                    .setCancelable(false);
 
-    private void showContactRequestAlert(String requestId, String professionalId, String patientId) {
-        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(professionalId);
-
-        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    String firstName = snapshot.child("firstName").getValue(String.class);
-                    String lastName = snapshot.child("lastName").getValue(String.class);
-                    String professionalName = (firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "");
-
-                    // Ahora mostramos la alerta con el nombre del profesional
-                    runOnUiThread(() -> {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(BaseActivity.this);
-                        builder.setTitle("Solicitud de Contacto")
-                                .setMessage(professionalName + " desea vincularse contigo. ¿Aceptas?")
-                                .setPositiveButton("Aceptar", (dialog, which) -> {
-                                    acceptContactRequest(requestId, professionalId, patientId);
-                                    dialog.dismiss(); // 🔹 Cerrar la alerta al aceptar
-                                })
-                                .setNegativeButton("Rechazar", (dialog, which) -> {
-                                    rejectContactRequest(requestId);
-                                    dialog.dismiss(); // 🔹 Cerrar la alerta al rechazar
-                                })
-                                .setCancelable(false); // 🔹 Evita que se cierre sin responder
-
-                        AlertDialog alertDialog = builder.create();
-                        alertDialog.show();
-                    });
-
-                    // Mostrar también en la notificación
-                    showNotificationForContactRequest(professionalName);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.e(TAG, "❌ Error al obtener datos del profesional: " + error.getMessage());
-            }
+            AlertDialog alertDialog = builder.create();
+            alertDialog.show();
         });
-    }
 
+        // 🔹 Notificación push solo para el paciente
+        showNotificationForContactRequest(professionalName);
+    }
 
 
     private void acceptContactRequest(String requestId, String professionalId, String patientId) {

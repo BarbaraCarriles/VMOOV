@@ -112,7 +112,14 @@
         <item>Sanatorio La Trinidad - Palermo</item>
         <item>Sanatorio Las Lomas - Pilar</item>
         <item>Sanatorio Las Lomas - San Isidro</item>
-
+        <item>Hospital de Clínicas</item>
+        <item>Fleni - Escobar </item>
     </string-array>
+
+    <string-array name="game_array">
+        <item>game1</item>
+        <item>simon</item>
+    </string-array>
+
 
 </resources>

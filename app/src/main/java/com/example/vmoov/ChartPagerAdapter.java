@@ -25,6 +25,8 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     private int[] chartData = new int[4]; // Datos de los gráficos
     private int totalSessions = 1; // Sesiones recetadas
     private int prescribedSteps = 1; // Pasos recetados
+
+    private int totalSteps = 1;
     private int successfulSteps = 0;
     private int gamesPlayed = 0; // Sesiones jugadas
     private int executionTimeChange = 0; // Cambio porcentual en tiempo de ejecución
@@ -33,6 +35,7 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     private static final int VIEW_TYPE_RATIO = 0;  // Para mostrar resultado/total
     private static final int VIEW_TYPE_TEXT = 1;
     private static final int VIEW_TYPE_SCORE = 2; // Nueva vista para el Puntaje General
+    private static final int VIEW_TYPE_NUMBER = 3; // Para métricas de un solo número
 
 
     public ChartPagerAdapter(Context context) {
@@ -55,6 +58,11 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
     public void setGamesPlayed(int gamesPlayed) {
         this.gamesPlayed = gamesPlayed;
+        notifyDataSetChanged();
+    }
+
+    public void setTotalSteps(int totalSteps) {
+        this.totalSteps = Math.max(totalSteps, 1);
         notifyDataSetChanged();
     }
 
@@ -93,7 +101,7 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             case 2:
                 return VIEW_TYPE_RATIO; // 🔹 Movimientos Exitosos
             case 3:
-                return VIEW_TYPE_RATIO; // 🔹 Sesiones Completadas
+                return modoValidacion ? VIEW_TYPE_NUMBER : VIEW_TYPE_RATIO; // 🔹 Sesiones Completadas
             default:
                 return VIEW_TYPE_RATIO;
         }
@@ -109,7 +117,13 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         } else if (viewType == VIEW_TYPE_SCORE) {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_score, parent, false);
             return new ScoreViewHolder(view);
-        } else {
+
+        }
+        else if (viewType == VIEW_TYPE_NUMBER) {
+            View view = LayoutInflater.from(context).inflate(R.layout.fragment_number, parent, false);
+            return new NumberViewHolder(view);
+        }
+        else {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_ratio, parent, false);
             return new RatioViewHolder(view);
         }
@@ -136,17 +150,28 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
             case 2: // 🔹 Movimientos Exitosos
                 if (holder instanceof RatioViewHolder) {
-                    Log.d("ChartPagerAdapter", "🟡 Mostrando ratio de movimientos exitosos.");
-                    ((RatioViewHolder) holder).bind(successfulSteps, prescribedSteps, "movimientos correctos");
+                    if (modoValidacion) {
+                        Log.d("ChartPagerAdapter", "🟣 Modo validación activo: mostrando valores absolutos de movimientos.");
+                        ((RatioViewHolder) holder).bind(successfulSteps, totalSteps, "movimientos correctos");
+                    } else {
+                        Log.d("ChartPagerAdapter", "🟡 Mostrando ratio de movimientos exitosos.");
+                        ((RatioViewHolder) holder).bind(successfulSteps, prescribedSteps, "movimientos correctos");
+                    }
                 }
                 break;
 
-            case 3: // 🔹 Sesiones Completadas
-                if (holder instanceof RatioViewHolder) {
-                    Log.d("ChartPagerAdapter", "🟡 Mostrando ratio de sesiones completadas.");
-                    ((RatioViewHolder) holder).bind(gamesPlayed, totalSessions, "sesiones completadas");
+            case 3: // Sesiones completadas
+                if (modoValidacion) {
+                    if (holder instanceof NumberViewHolder) {
+                        ((NumberViewHolder) holder).bind(gamesPlayed, "sesiones completadas");
+                    }
+                } else {
+                    if (holder instanceof RatioViewHolder) {
+                        ((RatioViewHolder) holder).bind(gamesPlayed, totalSessions, "sesiones completadas");
+                    }
                 }
                 break;
+
 
             default:
                 Log.e("ChartPagerAdapter", "❌ ERROR: ViewHolder en posición inesperada - " + position);
@@ -154,9 +179,12 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         }
     }
 
+    private boolean modoValidacion = false;
 
-
-
+    public void setModoValidacion(boolean modoValidacion) {
+        this.modoValidacion = modoValidacion;
+        notifyDataSetChanged();
+    }
 
     public static class RatioViewHolder extends RecyclerView.ViewHolder {
         TextView completedText, totalText, descriptionText;
@@ -199,6 +227,37 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         }
     }
 
+    public static class NumberViewHolder extends RecyclerView.ViewHolder {
+        TextView numberText, descriptionText;
+        ImageView statusImage;
+
+        public NumberViewHolder(@NonNull View itemView) {
+            super(itemView);
+            numberText = itemView.findViewById(R.id.number_text);
+            descriptionText = itemView.findViewById(R.id.description_text);
+            statusImage = itemView.findViewById(R.id.status_image);
+        }
+
+        public void bind(int number, String description) {
+            numberText.setText(String.valueOf(number));
+            descriptionText.setText(description);
+
+            // Opcional: cambiar color según valor
+            if (number < 5) {
+                numberText.setTextColor(Color.parseColor("#F18181"));
+                descriptionText.setTextColor(Color.parseColor("#F18181"));
+                statusImage.setImageResource(R.drawable.keep);
+            } else if (number < 10) {
+                numberText.setTextColor(Color.parseColor("#F1C40F"));
+                descriptionText.setTextColor(Color.parseColor("#F1C40F"));
+                statusImage.setImageResource(R.drawable.claps);
+            } else {
+                numberText.setTextColor(Color.parseColor("#39e186"));
+                descriptionText.setTextColor(Color.parseColor("#39e186"));
+                statusImage.setImageResource(R.drawable.thumbup);
+            }
+        }
+    }
 
 
 

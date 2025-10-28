@@ -38,30 +38,58 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:gravity="center"
             android:padding="12dp">
 
-            <Spinner
-                android:id="@+id/spinner_number"
-                android:layout_width="0dp"
-                android:layout_height="50dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/spinner_background"
-                android:entries="@array/number_array"
-                android:spinnerMode="dropdown"/>
+            <!-- Fila 1: Número y Tipo -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
 
-            <Spinner
-                android:id="@+id/spinner_type"
-                android:layout_width="0dp"
-                android:layout_height="50dp"
-                android:layout_weight="2"
-                android:layout_marginStart="12dp"
-                android:background="@drawable/spinner_background"
-                android:entries="@array/type_array"
-                android:spinnerMode="dropdown"/>
+                <Spinner
+                    android:id="@+id/spinner_number"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/spinner_background"
+                    android:entries="@array/number_array"
+                    android:spinnerMode="dropdown"/>
+
+                <Spinner
+                    android:id="@+id/spinner_type"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="2"
+                    android:layout_marginStart="12dp"
+                    android:background="@drawable/spinner_background"
+                    android:entries="@array/type_array"
+                    android:spinnerMode="dropdown"/>
+            </LinearLayout>
+
+            <!-- Fila 2: Juego -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="12dp">
+
+                <Spinner
+                    android:id="@+id/spinner_game"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/spinner_background"
+                    android:entries="@array/game_array"
+                    android:spinnerMode="dropdown"/>
+            </LinearLayout>
+
         </LinearLayout>
+
     </androidx.cardview.widget.CardView>
 
     <!-- 🔹 CardView para el gráfico y TabLayout -->

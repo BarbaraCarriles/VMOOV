@@ -4,8 +4,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -30,15 +32,15 @@ public class MetricsAdapter extends RecyclerView.Adapter<MetricsAdapter.MetricsV
     public void onBindViewHolder(@NonNull MetricsViewHolder holder, int position) {
         Metric metric = metricsList.get(position);
 
-        // Convert start and end times to the desired format "dd/MM/yyyy HH:mm"
+        // Mostrar nombre del juego
+        holder.gameNameTextView.setText(metric.getGameName());
+
+        // Formatear fechas
         String formattedStartTime = formatDate(metric.getStartTime());
         String formattedEndTime = formatDate(metric.getEndTime());
 
-        // Display start time and total duration
         holder.gameDateTextView.setText(formattedStartTime);
         holder.totalDurationTextView.setText("- Duración Total: " + GameDurationCalculator.calculateGameDuration(metric.getStartTime(), metric.getEndTime()));
-
-        // Display other metrics
         holder.averageTimeTextView.setText("- Tiempo Promedio: " + String.format("%.2f s", metric.getAverageTime()));
         holder.successRateTextView.setText("- Movimientos Exitosos: " + metric.getTrueCount() + "/" + metric.getStepCount());
     }
@@ -49,10 +51,11 @@ public class MetricsAdapter extends RecyclerView.Adapter<MetricsAdapter.MetricsV
     }
 
     public static class MetricsViewHolder extends RecyclerView.ViewHolder {
-        TextView gameDateTextView, averageTimeTextView, successRateTextView, totalDurationTextView;
+        TextView gameNameTextView, gameDateTextView, averageTimeTextView, successRateTextView, totalDurationTextView;
 
         public MetricsViewHolder(@NonNull View itemView) {
             super(itemView);
+            gameNameTextView = itemView.findViewById(R.id.gameNameTextView);
             gameDateTextView = itemView.findViewById(R.id.gameDateTextView);
             averageTimeTextView = itemView.findViewById(R.id.averageTimeTextView);
             successRateTextView = itemView.findViewById(R.id.successRateTextView);
@@ -60,9 +63,15 @@ public class MetricsAdapter extends RecyclerView.Adapter<MetricsAdapter.MetricsV
         }
     }
 
-    // Method to format `startTime` or `endTime` into a readable date in the format "dd/MM/yyyy HH:mm"
+    // Formatear timestamps
     private String formatDate(long timestamp) {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         return sdf.format(new Date(timestamp));
+    }
+
+    // 🔹 Actualizar lista de métricas si cambian
+    public void updateMetrics(List<Metric> newMetrics) {
+        this.metricsList = newMetrics;
+        notifyDataSetChanged();
     }
 }

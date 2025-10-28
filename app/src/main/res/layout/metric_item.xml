@@ -5,6 +5,21 @@
     android:layout_height="wrap_content"
     android:padding="16dp">
 
+    <!-- 🔹 Nombre del Juego -->
+    <TextView
+        android:id="@+id/gameNameTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Nombre del Juego"
+        style="@style/cuerpobold"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/blue"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="4dp"/>
+
     <TextView
         android:id="@+id/gameDateTextView"
         android:layout_width="0dp"
@@ -15,7 +30,7 @@
         android:textStyle="bold"
         android:textColor="@color/blue"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/gameNameTextView"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <TextView

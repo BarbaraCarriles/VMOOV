@@ -190,6 +190,10 @@ public class SignUpActivity extends BaseActivity {
                         mDatabase.child("users").child(userId).setValue(user)
                                 .addOnCompleteListener(task1 -> {
                                     if (task1.isSuccessful()) {
+
+                                        // 🔹 Solo UID del profesional
+                                        mDatabase.child("healthProfessionals").child(userId).setValue(true);
+
                                         showToast("Registro exitoso.");
                                         Intent intent = new Intent(SignUpActivity.this, HealthProfessionalInfoActivity.class);
                                         startActivity(intent);
