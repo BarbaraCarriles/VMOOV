@@ -324,10 +324,16 @@ public class Chart1Fragment extends Fragment {
         Typeface typeface = ResourcesCompat.getFont(requireContext(), R.font.verdana);
         dataSet.setValueTextSize(12f);
         dataSet.setValueTypeface(typeface);
+
+        // 🔹 Formateamos distinto según el tipo de gráfico
         dataSet.setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                return String.format("%.1f", value);
+                if (isDurationChart) {
+                    return String.format(Locale.getDefault(), "%.1f", value); // segundos con decimales
+                } else {
+                    return String.format(Locale.getDefault(), "%.0f", value); // movimientos enteros
+                }
             }
         });
 
@@ -335,13 +341,20 @@ public class Chart1Fragment extends Fragment {
         chart.setData(barData);
 
         float maxY = entries.isEmpty() ? 1 : Collections.max(entries, Comparator.comparing(BarEntry::getY)).getY();
+
+        // 🔹 Si son movimientos, ajustamos el eje Y a enteros
+        if (!isDurationChart) {
+            chart.getAxisLeft().setGranularity(1f);
+            chart.getAxisLeft().setGranularityEnabled(true);
+        }
+
         chart.getAxisLeft().setAxisMaximum(maxY + 1);
         chart.getAxisLeft().setAxisMinimum(0f);
         chart.getAxisRight().setEnabled(false);
         chart.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                return isDurationChart ? value + " s" : value + " mov.";
+                return isDurationChart ? value + " s" : String.format(Locale.getDefault(), "%.0f mov.", value);
             }
         });
 

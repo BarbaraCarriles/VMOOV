@@ -23,41 +23,34 @@ import java.util.Locale;
 public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final Context context;
     private int[] chartData = new int[4]; // Datos de los gráficos
-    private int totalSessions = 1; // Sesiones recetadas
+    private int prescribedSessions = 1; // Sesiones recetadas
     private int prescribedSteps = 1; // Pasos recetados
-
     private int totalSteps = 1;
     private int successfulSteps = 0;
-    private int gamesPlayed = 0; // Sesiones jugadas
+    private int gamesPlayed = 0; //
+    private int sessionsPlayed = 0; //
     private int executionTimeChange = 0; // Cambio porcentual en tiempo de ejecución
     private int generalScore = 0; // Nueva variable para almacenar el puntaje general
+    //private int difficultyLevel = 0; // Nivel por defecto
 
     private static final int VIEW_TYPE_RATIO = 0;  // Para mostrar resultado/total
     private static final int VIEW_TYPE_TEXT = 1;
     private static final int VIEW_TYPE_SCORE = 2; // Nueva vista para el Puntaje General
-    private static final int VIEW_TYPE_NUMBER = 3; // Para métricas de un solo número
+    private static final int VIEW_TYPE_NUMBER = 3; // Para cantidad sesiones
+    private static final int VIEW_TYPE_DIFFICULTY = 4; // Para cantidad sesiones
 
 
     public ChartPagerAdapter(Context context) {
         this.context = context;
     }
 
-    public void setChartData(int[] newData) {
-        this.chartData = newData;
-
-        Log.d("ChartPagerAdapter", "✅ ACTUALIZANDO UI - GamesPlayed: " + newData[0]);
-        Log.d("ChartPagerAdapter", "✅ ACTUALIZANDO UI - SuccessfulSteps: " + newData[1]);
-
-        notifyDataSetChanged();  // Asegurar que se actualicen los datos en la interfaz
-    }
-
-    public void setTotalSessions(int totalSessions) {
-        this.totalSessions = Math.max(totalSessions, 1);
+   public void setGamesPlayed(int gamesPlayed) {
+        this.gamesPlayed = gamesPlayed;
         notifyDataSetChanged();
     }
 
-    public void setGamesPlayed(int gamesPlayed) {
-        this.gamesPlayed = gamesPlayed;
+    public void setSessionsPlayed(int sessionsPlayed) {
+        this.sessionsPlayed = sessionsPlayed;
         notifyDataSetChanged();
     }
 
@@ -76,6 +69,11 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         notifyDataSetChanged();
     }
 
+    public void setPrescribedSessions(int sessions) {
+        this.prescribedSessions = sessions > 0 ? sessions : 1;
+        notifyDataSetChanged();
+    }
+
     public void setExecutionTimeChange(int change) {
         this.executionTimeChange = change;
         notifyDataSetChanged();
@@ -91,6 +89,13 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         });
     }
 
+    /*
+    public void setDifficultyLevel(int level) {
+        this.difficultyLevel = level;
+        notifyDataSetChanged();
+    }*/
+
+
     @Override
     public int getItemViewType(int position) {
         switch (position) {
@@ -102,6 +107,9 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 return VIEW_TYPE_RATIO; // 🔹 Movimientos Exitosos
             case 3:
                 return modoValidacion ? VIEW_TYPE_NUMBER : VIEW_TYPE_RATIO; // 🔹 Sesiones Completadas
+           /* case 4:
+                return VIEW_TYPE_DIFFICULTY; //dificultad
+*/
             default:
                 return VIEW_TYPE_RATIO;
         }
@@ -117,12 +125,14 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         } else if (viewType == VIEW_TYPE_SCORE) {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_score, parent, false);
             return new ScoreViewHolder(view);
-
-        }
-        else if (viewType == VIEW_TYPE_NUMBER) {
+        } else if (viewType == VIEW_TYPE_NUMBER) {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_number, parent, false);
             return new NumberViewHolder(view);
         }
+      /*  else if (viewType == VIEW_TYPE_DIFFICULTY) {
+            View view = LayoutInflater.from(context).inflate(R.layout.fragment_difficulty, parent, false);
+            return new DifficultyViewHolder(view);
+        }*/
         else {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_ratio, parent, false);
             return new RatioViewHolder(view);
@@ -163,15 +173,20 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             case 3: // Sesiones completadas
                 if (modoValidacion) {
                     if (holder instanceof NumberViewHolder) {
-                        ((NumberViewHolder) holder).bind(gamesPlayed, "sesiones completadas");
+                        ((NumberViewHolder) holder).bind(sessionsPlayed, "sesiones completadas");
                     }
                 } else {
                     if (holder instanceof RatioViewHolder) {
-                        ((RatioViewHolder) holder).bind(gamesPlayed, totalSessions, "sesiones completadas");
+                        ((RatioViewHolder) holder).bind(sessionsPlayed, prescribedSessions, "sesiones completadas");
                     }
                 }
                 break;
 
+          /*  case 4: // 🔹 Nivel de dificultad
+                if (holder instanceof DifficultyViewHolder) {
+                    ((DifficultyViewHolder) holder).bind(difficultyLevel, "nivel");
+                }
+                break;*/
 
             default:
                 Log.e("ChartPagerAdapter", "❌ ERROR: ViewHolder en posición inesperada - " + position);
@@ -253,6 +268,38 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 statusImage.setImageResource(R.drawable.claps);
             } else {
                 numberText.setTextColor(Color.parseColor("#39e186"));
+                descriptionText.setTextColor(Color.parseColor("#39e186"));
+                statusImage.setImageResource(R.drawable.thumbup);
+            }
+        }
+    }
+
+    public static class DifficultyViewHolder extends RecyclerView.ViewHolder {
+        TextView levelText, descriptionText;
+        ImageView statusImage;
+
+        public DifficultyViewHolder(@NonNull View itemView) {
+            super(itemView);
+            levelText = itemView.findViewById(R.id.level_text);
+            descriptionText = itemView.findViewById(R.id.difficulty_description_text);
+            statusImage = itemView.findViewById(R.id.difficulty_image);
+        }
+
+        public void bind(int level, String description) {
+            levelText.setText(String.valueOf(level));
+            descriptionText.setText(description);
+
+
+            if (level < 3) {
+                levelText.setTextColor(Color.parseColor("#F18181"));
+                descriptionText.setTextColor(Color.parseColor("#F18181"));
+                statusImage.setImageResource(R.drawable.keep);
+            } else if (level < 6) {
+                levelText.setTextColor(Color.parseColor("#F1C40F"));
+                descriptionText.setTextColor(Color.parseColor("#F1C40F"));
+                statusImage.setImageResource(R.drawable.claps);
+            } else {
+                levelText.setTextColor(Color.parseColor("#39e186"));
                 descriptionText.setTextColor(Color.parseColor("#39e186"));
                 statusImage.setImageResource(R.drawable.thumbup);
             }

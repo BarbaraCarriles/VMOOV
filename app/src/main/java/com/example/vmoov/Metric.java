@@ -3,39 +3,22 @@ package com.example.vmoov;
 import java.util.List;
 
 public class Metric {
-    private String gameName; // Nombre del juego (por ejemplo: "game1" o "simon")
-    private long startTime;  // Timestamp de inicio (ms)
-    private long endTime;    // Timestamp de fin (ms)
-    private int trueCount;       // Cantidad de movimientos correctos
-    private double averageTime;  // Tiempo promedio por paso/movimiento
-    private String gameDuration; // Duración total formateada (ej: "01:23")
-    private long gameDurationSeconds; // Duración total en segundos
-    private int stepCount;       // Total de pasos o movimientos
+    private String gameName;         // Nombre del juego
+    private long startTime;          // Timestamp inicio
+    private long endTime;            // Timestamp fin
+    private int trueCount;           // Movimientos correctos
+    private double averageTime;      // Tiempo promedio por paso
+    private String gameDuration;     // Duración formateada
+    private long gameDurationSeconds;// Duración total en segundos
+    private int stepCount;           // Total de pasos/movimientos
+    private int difficulty;          // Nivel de dificultad
+    private Integer maxSteps;        // Solo para juegos como Simon (puede ser null)
+    private List<StepDetail> steps;  // Detalle de cada paso
 
-    // 🔹 Detalle paso a paso (solo se usa si se necesita analizar cada movimiento)
-    private List<StepDetail> steps;
-
-
-    // ------------------------------------------------------------------------
-    //  CONSTRUCTORES
-    // ------------------------------------------------------------------------
-
-    /**
-     * Constructor principal que se usa cuando también se quieren almacenar los pasos individuales.
-     *
-     *  Se utiliza en ambos juegos ("game1" y "simon") cuando se desea guardar el detalle completo.
-     *
-     * @param gameName       Nombre del juego ("game1" o "simon")
-     * @param startTime      Inicio de la sesión
-     * @param endTime        Fin de la sesión
-     * @param trueCount      Cantidad de aciertos
-     * @param averageTime    Tiempo promedio por paso
-     * @param gameDuration   Duración total formateada
-     * @param stepCount      Número total de pasos o movimientos
-     * @param steps          Lista con el detalle de cada paso
-     */
-    public Metric(String gameName, long startTime, long endTime, int trueCount, double averageTime,
-                  String gameDuration, int stepCount, List<StepDetail> steps) {
+    // ---------------- CONSTRUCTORES ----------------
+    public Metric(String gameName, long startTime, long endTime, int trueCount,
+                  double averageTime, String gameDuration, int stepCount,
+                  List<StepDetail> steps, int difficulty, Integer maxSteps) {
         this.gameName = gameName;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -44,26 +27,19 @@ public class Metric {
         this.gameDuration = gameDuration;
         this.stepCount = stepCount;
         this.steps = steps;
+        this.difficulty = difficulty;
+        this.maxSteps = maxSteps;
         this.gameDurationSeconds = (endTime - startTime) / 1000;
     }
 
-    /**
-     * Constructor alternativo (sin lista de pasos).
-     *
-     *  Se usa cuando solo interesa la información general de la sesión
-     *    (por ejemplo, para mostrar promedios o estadísticas globales).
-     *
-     */
-    public Metric(String gameName, long startTime, long endTime, int trueCount, double averageTime,
-                  String gameDuration, int stepCount) {
-        this(gameName, startTime, endTime, trueCount, averageTime, gameDuration, stepCount, null);
+    // Constructor alternativo sin steps
+    public Metric(String gameName, long startTime, long endTime, int trueCount,
+                  double averageTime, String gameDuration, int stepCount,
+                  int difficulty, Integer maxSteps) {
+        this(gameName, startTime, endTime, trueCount, averageTime, gameDuration, stepCount, null, difficulty, maxSteps);
     }
 
-
-    // ------------------------------------------------------------------------
-    // GETTERS
-    // ------------------------------------------------------------------------
-
+    // ---------------- GETTERS ----------------
     public String getGameName() { return gameName; }
     public long getStartTime() { return startTime; }
     public long getEndTime() { return endTime; }
@@ -73,49 +49,40 @@ public class Metric {
     public long getGameDurationSeconds() { return gameDurationSeconds; }
     public int getStepCount() { return stepCount; }
     public List<StepDetail> getSteps() { return steps; }
+    public int getDifficulty() { return difficulty; }
+    public Integer getMaxSteps() { return maxSteps; }
 
-
-    // ------------------------------------------------------------------------
-    // CLASE INTERNA: StepDetail
-    // ------------------------------------------------------------------------
-    /**
-     * Representa un movimiento o paso dentro de una sesión de juego.
-     *
-     * Se usa de forma distinta según el juego:
-     *
-     * 🔸 En "game1":
-     *      - Cada StepDetail representa un movimiento del paciente (por ejemplo, levantar brazo)
-     *      - Solo se usan `result` y `time`
-     *
-     * 🔸 En "simon":
-     *      - Cada StepDetail representa un movimiento dentro de una ronda.
-     *      - Se usan `result`, `time` y también `roundNumber` para identificar la ronda.
-     */
+    // ---------------- StepDetail ----------------
     public static class StepDetail {
-        private boolean result;     // Si el paso fue correcto o no
-        private double time;        // Tiempo del paso
-        private int roundNumber;    // Número de ronda (solo en Simon)
+        private boolean result;      // Correcto o no
+        private double time;         // Duración
+        private int roundNumber;     // Simon
+        private Integer stepNumber;  // game1
+        private Integer buttonPressed; // Simon
 
-        /**
-         * Constructor general (para Simon u otros juegos con rondas).
-         */
-        public StepDetail(boolean result, double time, int roundNumber) {
+        // Constructor para Simon
+        public StepDetail(boolean result, double time, int roundNumber, Integer buttonPressed) {
             this.result = result;
             this.time = time;
             this.roundNumber = roundNumber;
+            this.buttonPressed = buttonPressed;
+            this.stepNumber = null;
         }
 
-        /**
-         * Constructor simple (para Game1 u otros sin rondas).
-         */
-        public StepDetail(boolean result, double time) {
-            this(result, time, -1); // -1 indica que no pertenece a ninguna ronda
+        // Constructor para game1
+        public StepDetail(boolean result, double time, int stepNumber) {
+            this.result = result;
+            this.time = time;
+            this.stepNumber = stepNumber;
+            this.roundNumber = -1;
+            this.buttonPressed = null;
         }
 
         // Getters
         public boolean isResult() { return result; }
         public double getTime() { return time; }
         public int getRoundNumber() { return roundNumber; }
+        public Integer getStepNumber() { return stepNumber; }
+        public Integer getButtonPressed() { return buttonPressed; }
     }
 }
-

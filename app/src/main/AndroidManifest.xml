@@ -143,6 +143,7 @@
             android:name=".ShowUniqueCodeActivity"
             android:exported="false"/>
 
+
     </application>
 
 </manifest>

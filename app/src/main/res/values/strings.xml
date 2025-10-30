@@ -74,9 +74,9 @@
     <string-array name="order_array">
         <item>Fecha (más antiguo a más nuevo)</item>
         <item>Fecha (más nuevo a más antiguo)</item>
-        <item>Tiempo de ejecución</item>
-        <item>Duración de sesión</item>
-        <item>Cantidad de movimientos correctos</item>
+        <item>Tiempo de ejecución (Mayor a menor)</item>
+        <item>Duración de sesión (Mayor a menor)</item>
+        <item>Cantidad de movimientos correctos (Mayor a menor)</item>
     </string-array>
 
     <string-array name="obra_social_array">
