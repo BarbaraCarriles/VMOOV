@@ -31,13 +31,13 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     private int sessionsPlayed = 0; //
     private int executionTimeChange = 0; // Cambio porcentual en tiempo de ejecución
     private int generalScore = 0; // Nueva variable para almacenar el puntaje general
-    //private int difficultyLevel = 0; // Nivel por defecto
+    private int difficultyLevel = 0; // Nivel por defecto
 
     private static final int VIEW_TYPE_RATIO = 0;  // Para mostrar resultado/total
     private static final int VIEW_TYPE_TEXT = 1;
     private static final int VIEW_TYPE_SCORE = 2; // Nueva vista para el Puntaje General
     private static final int VIEW_TYPE_NUMBER = 3; // Para cantidad sesiones
-    private static final int VIEW_TYPE_DIFFICULTY = 4; // Para cantidad sesiones
+    private static final int VIEW_TYPE_DIFFICULTY = 4; // Para dificultad
 
 
     public ChartPagerAdapter(Context context) {
@@ -89,11 +89,11 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         });
     }
 
-    /*
+
     public void setDifficultyLevel(int level) {
         this.difficultyLevel = level;
         notifyDataSetChanged();
-    }*/
+    }
 
 
     @Override
@@ -107,9 +107,9 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 return VIEW_TYPE_RATIO; // 🔹 Movimientos Exitosos
             case 3:
                 return modoValidacion ? VIEW_TYPE_NUMBER : VIEW_TYPE_RATIO; // 🔹 Sesiones Completadas
-           /* case 4:
+            case 4:
                 return VIEW_TYPE_DIFFICULTY; //dificultad
-*/
+
             default:
                 return VIEW_TYPE_RATIO;
         }
@@ -129,10 +129,10 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_number, parent, false);
             return new NumberViewHolder(view);
         }
-      /*  else if (viewType == VIEW_TYPE_DIFFICULTY) {
+        else if (viewType == VIEW_TYPE_DIFFICULTY) {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_difficulty, parent, false);
             return new DifficultyViewHolder(view);
-        }*/
+        }
         else {
             View view = LayoutInflater.from(context).inflate(R.layout.fragment_ratio, parent, false);
             return new RatioViewHolder(view);
@@ -182,11 +182,11 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 }
                 break;
 
-          /*  case 4: // 🔹 Nivel de dificultad
+           case 4: // 🔹 Nivel de dificultad
                 if (holder instanceof DifficultyViewHolder) {
                     ((DifficultyViewHolder) holder).bind(difficultyLevel, "nivel");
                 }
-                break;*/
+                break;
 
             default:
                 Log.e("ChartPagerAdapter", "❌ ERROR: ViewHolder en posición inesperada - " + position);
@@ -364,7 +364,7 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
     @Override
     public int getItemCount() {
-        return 4;
+        return 5;
     }
 
     public static class ChartViewHolder extends RecyclerView.ViewHolder {

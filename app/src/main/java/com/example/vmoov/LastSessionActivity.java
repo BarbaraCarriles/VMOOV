@@ -30,6 +30,7 @@ public class LastSessionActivity extends BaseActivity {
             "Tiempo Promedio por Paso",
             "Movimientos Exitosos",
             "Sesiones Completadas",
+            "Nivel de dificultad",
     };
 
     private final String[] chartDescriptionsEntrenamiento = {
@@ -37,6 +38,8 @@ public class LastSessionActivity extends BaseActivity {
             "Cambio porcentual en el tiempo promedio de ejecución entre las últimas dos sesiones.",
             "Proporción de movimientos exitosos sobre el total de la prescripción.",
             "Cantidad de sesiones realizadas respecto del total recetado.",
+            "Nivel de dificultad de la última sesion jugada.",
+
     };
 
     private final String[] chartDescriptionsValidacion = {
@@ -44,6 +47,8 @@ public class LastSessionActivity extends BaseActivity {
             "Cambio porcentual en el tiempo promedio de ejecución entre las últimas dos sesiones.",
             "Proporción de movimientos exitosos sobre el total de intentos realizados.",
             "Cantidad total de sesiones realizadas por el paciente.",
+            "Nivel de dificultad de la última sesion jugada.",
+
     };
 
     private String[] chartDescriptionsActuales = chartDescriptionsEntrenamiento;
