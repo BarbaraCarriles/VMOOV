@@ -152,6 +152,7 @@ public class LastSessionActivity extends BaseActivity {
                 sameGameMetrics.sort((m1, m2) -> Long.compare(m2.getStartTime(), m1.getStartTime()));
                 Metric prevMetric = sameGameMetrics.size() > 1 ? sameGameMetrics.get(1) : null;
 
+                //Para calcular el cambio porcentual en el tiempo entre las ultimas 2 sesiones
                 double cambioTiempo = 0;
                 if (prevMetric != null && prevMetric.getAverageTime() > 0) {
                     cambioTiempo = ((lastMetric.getAverageTime() - prevMetric.getAverageTime()) / prevMetric.getAverageTime()) * 100;
@@ -169,7 +170,7 @@ public class LastSessionActivity extends BaseActivity {
                 chartPagerAdapter.setGamesPlayed(totalGamesPlayed);
                 chartPagerAdapter.setPrescribedSteps(prescribedSteps);
                 chartPagerAdapter.setPrescribedSessions(prescribedSessions);
-                //chartPagerAdapter.setDifficultyLevel(difficultyLevel);
+                chartPagerAdapter.setDifficultyLevel(difficultyLevel);
 
                 SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
                 fechaUltimaSesion = dateFormat.format(new Date(lastMetric.getStartTime()));

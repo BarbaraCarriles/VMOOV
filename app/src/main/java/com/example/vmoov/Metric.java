@@ -57,7 +57,7 @@ public class Metric {
         private boolean result;      // Correcto o no
         private double time;         // Duración
         private int roundNumber;     // Simon
-        private Integer stepNumber;  // game1
+        private Integer stepNumber;  //
         private Integer buttonPressed; // Simon
 
         // Constructor para Simon

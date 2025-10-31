@@ -7,7 +7,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FirebaseDataHelper {
 
@@ -205,6 +207,104 @@ public class FirebaseDataHelper {
             callback.onSuccess(prescriptions);
         });
     }
+
+
+    // ------------------------------------------------------------------------
+    //  Procesar steps
+    // ------------------------------------------------------------------------
+
+    public static List<Metric.StepDetail> processStepDetails(String gameName, DataSnapshot sessionSnapshot) {
+        List<Metric.StepDetail> stepDetails = new ArrayList<>();
+
+        if (gameName.equals("game1") && sessionSnapshot.child("steps").exists()) {
+            // GAME1: steps planos con stepNumber
+            for (DataSnapshot stepSnap : sessionSnapshot.child("steps").getChildren()) {
+                Boolean result = stepSnap.child("result").getValue(Boolean.class);
+                Double time = stepSnap.child("time").getValue(Double.class);
+                Long stepNumberLong = stepSnap.child("step").getValue(Long.class);
+                int stepNumber = stepNumberLong != null ? stepNumberLong.intValue() : stepDetails.size();
+
+                stepDetails.add(new Metric.StepDetail(
+                        result != null && result,
+                        time != null ? time : 0,
+                        stepNumber
+                ));
+            }
+        } else if (gameName.equals("simon") && sessionSnapshot.child("rounds").exists()) {
+            // SIMON: cada round tiene steps
+            int roundNumber = 0;
+            for (DataSnapshot roundSnap : sessionSnapshot.child("rounds").getChildren()) {
+                for (DataSnapshot stepSnap : roundSnap.getChildren()) {
+                    Boolean correct = stepSnap.child("correct").getValue(Boolean.class);
+                    Double time = stepSnap.child("time").getValue(Double.class);
+                    Integer buttonPressed = stepSnap.child("buttonPressed").getValue(Integer.class);
+
+                    stepDetails.add(new Metric.StepDetail(
+                            correct != null && correct,
+                            time != null ? time : 0,
+                            roundNumber,
+                            buttonPressed
+                    ));
+                }
+                roundNumber++;
+            }
+        }
+
+        return stepDetails;
+    }
+
+
+    // ------------------------------------------------------------------------
+    //  Calcular estadistitcas por boton: %aciertos y tiempo promedio
+    // ------------------------------------------------------------------------
+    public static class ButtonStats {
+        public final int button;
+        public final int correctCount;
+        public final int totalCount;
+        public final double precision;      // 0..1
+        public final double averageTime;    // en segundos
+
+        public ButtonStats(int button, int correctCount, int totalCount, double precision, double averageTime) {
+            this.button = button;
+            this.correctCount = correctCount;
+            this.totalCount = totalCount;
+            this.precision = precision;
+            this.averageTime = averageTime;
+        }
+    }
+
+    public static List<ButtonStats> calculateButtonStats(List<Metric.StepDetail> stepDetails) {
+        // Map<boton, List<StepDetail>>
+        Map<Integer, List<Metric.StepDetail>> map = new HashMap<>();
+
+        for (Metric.StepDetail step : stepDetails) {
+            if (step.getButtonPressed() == null) continue; // ignorar game1
+            map.computeIfAbsent(step.getButtonPressed(), k -> new ArrayList<>()).add(step);
+        }
+
+        List<ButtonStats> statsList = new ArrayList<>();
+        for (Map.Entry<Integer, List<Metric.StepDetail>> entry : map.entrySet()) {
+            int button = entry.getKey();
+            List<Metric.StepDetail> steps = entry.getValue();
+
+            int total = steps.size();
+            int correct = 0;
+            double totalTime = 0;
+
+            for (Metric.StepDetail s : steps) {
+                if (s.isResult()) correct++;
+                totalTime += s.getTime();
+            }
+
+            double precision = total > 0 ? (double) correct / total : 0;
+            double avgTime = total > 0 ? totalTime / total : 0;
+
+            statsList.add(new ButtonStats(button, correct, total, precision, avgTime));
+        }
+
+        return statsList;
+    }
+
 
     // ------------------------------------------------------------------------
     //  Interfaz genérica para callbacks Firebase
