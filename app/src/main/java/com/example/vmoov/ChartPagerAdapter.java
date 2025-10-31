@@ -184,7 +184,7 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
            case 4: // 🔹 Nivel de dificultad
                 if (holder instanceof DifficultyViewHolder) {
-                    ((DifficultyViewHolder) holder).bind(difficultyLevel, "nivel");
+                    ((DifficultyViewHolder) holder).bind(difficultyLevel, "");
                 }
                 break;
 
@@ -290,18 +290,18 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             descriptionText.setText(description);
 
 
-            if (level < 3) {
+            if (level < 2) {
                 levelText.setTextColor(Color.parseColor("#F18181"));
                 descriptionText.setTextColor(Color.parseColor("#F18181"));
-                statusImage.setImageResource(R.drawable.keep);
-            } else if (level < 6) {
+                statusImage.setImageResource(R.drawable.easylevel);
+            } else if (level < 3) {
                 levelText.setTextColor(Color.parseColor("#F1C40F"));
                 descriptionText.setTextColor(Color.parseColor("#F1C40F"));
-                statusImage.setImageResource(R.drawable.claps);
+                statusImage.setImageResource(R.drawable.mediumlevel);
             } else {
                 levelText.setTextColor(Color.parseColor("#39e186"));
                 descriptionText.setTextColor(Color.parseColor("#39e186"));
-                statusImage.setImageResource(R.drawable.thumbup);
+                statusImage.setImageResource(R.drawable.hardlevel);
             }
         }
     }
