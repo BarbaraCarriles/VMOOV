@@ -15,47 +15,17 @@ import com.google.firebase.auth.FirebaseUser;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class LastSessionActivity extends BaseActivity {
 
-    private TextView titleText, subtitleText, motivationalText, chartTitle, chartDescription;
+    private TextView titleText, gameNameText, subtitleText, motivationalText, chartTitle, chartDescription;
     private ViewPager2 viewPager;
     private TabLayout tabLayout;
     private ChartPagerAdapter chartPagerAdapter;
 
     private final String TAG = "LastSessionActivity";
 
-    private final String[] chartTitles = {
-            "Puntaje General",
-            "Tiempo Promedio por Paso",
-            "Movimientos Exitosos",
-            "Sesiones Completadas",
-            "Nivel de dificultad",
-    };
-
-    private final String[] chartDescriptionsEntrenamiento = {
-            "Evaluación general del desempeño del paciente basada en múltiples métricas.",
-            "Cambio porcentual en el tiempo promedio de ejecución entre las últimas dos sesiones.",
-            "Proporción de movimientos exitosos sobre el total de la prescripción.",
-            "Cantidad de sesiones realizadas respecto del total recetado.",
-            "Nivel de dificultad de la última sesion jugada.",
-
-    };
-
-    private final String[] chartDescriptionsValidacion = {
-            "Evaluación general del desempeño del paciente basada en múltiples métricas.",
-            "Cambio porcentual en el tiempo promedio de ejecución entre las últimas dos sesiones.",
-            "Proporción de movimientos exitosos sobre el total de intentos realizados.",
-            "Cantidad total de sesiones realizadas por el paciente.",
-            "Nivel de dificultad de la última sesion jugada.",
-
-    };
-
-    private String[] chartDescriptionsActuales = chartDescriptionsEntrenamiento;
-
-    private int prescribedSteps = 0;
-
-    private int prescribedSessions = 0;
     private String fechaUltimaSesion = "Fecha desconocida";
 
     @Override
@@ -65,6 +35,7 @@ public class LastSessionActivity extends BaseActivity {
 
         // UI
         titleText = findViewById(R.id.title_text);
+        gameNameText = findViewById(R.id.game_name_text);
         subtitleText = findViewById(R.id.subtitle_text);
         motivationalText = findViewById(R.id.motivational_text);
         chartTitle = findViewById(R.id.chart_title);
@@ -80,8 +51,7 @@ public class LastSessionActivity extends BaseActivity {
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
-                chartTitle.setText(chartTitles[position]);
-                chartDescription.setText(chartDescriptionsActuales[position]);
+                updateChartTitleAndDescription(position);
             }
         });
 
@@ -98,37 +68,23 @@ public class LastSessionActivity extends BaseActivity {
         }
 
         String userId = currentUser.getUid();
-
-        // Primero obtenemos prescripciones, luego métricas
-        obtenerPrescripciones(userId, () -> fetchAndDisplayMetrics(userId));
+        fetchAndDisplayMetrics(userId);
     }
 
+    // -----------------------------
+    // obtener prescripciones de paciente, actualmente sin uso
+    // -----------------------------
     private void obtenerPrescripciones(String userId, Runnable callback) {
         FirebaseDataHelper.fetchPatientPrescriptions(userId, new FirebaseDataHelper.FirebaseCallback<List<Prescription>>() {
             @Override
             public void onSuccess(List<Prescription> result) {
-                if (result != null && !result.isEmpty()) {
-                    Prescription p = result.get(0); // tomamos la primera (asumiendo una prescripción por paciente)
-                    prescribedSteps = p.getSteps();
-                    prescribedSessions = p.getSessions();
-                    chartPagerAdapter.setModoValidacion(false);
-                    chartDescriptionsActuales = chartDescriptionsEntrenamiento;
-                } else {
-                    prescribedSteps = 0;
-                    prescribedSessions = 0;
-                    chartPagerAdapter.setModoValidacion(true);
-                    chartDescriptionsActuales = chartDescriptionsValidacion;
-                }
+                // Por ahora no se hace nada con las prescripciones
                 callback.run();
             }
 
             @Override
             public void onFailure(Exception e) {
                 Log.e(TAG, "Error obteniendo prescripciones", e);
-                prescribedSteps = 0;
-                prescribedSessions = 0;
-                chartPagerAdapter.setModoValidacion(true);
-                chartDescriptionsActuales = chartDescriptionsValidacion;
                 callback.run();
             }
         });
@@ -140,45 +96,48 @@ public class LastSessionActivity extends BaseActivity {
             public void onSuccess(List<Metric> allMetrics) {
                 if (allMetrics == null || allMetrics.isEmpty()) return;
 
-                // Última sesión
                 Metric lastMetric = allMetrics.stream()
                         .max(Comparator.comparingLong(Metric::getStartTime))
                         .orElse(null);
                 if (lastMetric == null) return;
 
-                // Sesión anterior del mismo juego
-                List<Metric> sameGameMetrics = new ArrayList<>();
-                for (Metric m : allMetrics) if (m.getGameName().equals(lastMetric.getGameName())) sameGameMetrics.add(m);
-                sameGameMetrics.sort((m1, m2) -> Long.compare(m2.getStartTime(), m1.getStartTime()));
-                Metric prevMetric = sameGameMetrics.size() > 1 ? sameGameMetrics.get(1) : null;
+                GameMetric gameMetric;
+                gameNameText.setText(lastMetric.getGameName());
 
-                //Para calcular el cambio porcentual en el tiempo entre las ultimas 2 sesiones
-                double cambioTiempo = 0;
-                if (prevMetric != null && prevMetric.getAverageTime() > 0) {
-                    cambioTiempo = ((lastMetric.getAverageTime() - prevMetric.getAverageTime()) / prevMetric.getAverageTime()) * 100;
+                if ("simon".equalsIgnoreCase(lastMetric.getGameName())) {
+                    gameMetric = GameMetric.buildSimonMetric(lastMetric);
+                } else if ("game1".equalsIgnoreCase(lastMetric.getGameName())) {
+                    Metric previousMetric = findPreviousMetric(allMetrics, lastMetric); // función auxiliar que busca la penúltima del mismo juego
+                    gameMetric = GameMetric.buildGame1Metric(lastMetric, previousMetric);
+
+                } else {
+                    return; // juego no soportado
                 }
 
-                int totalSuccessfulSteps = lastMetric.getTrueCount();
-                int totalGamesPlayed = (int) allMetrics.stream().map(Metric::getGameName).distinct().count();
+                // -------------------------
+                // Agregamos número de sesiones totales jugadas
+                // -------------------------
                 int totalSessionsPlayed = allMetrics.size();
-                int difficultyLevel = lastMetric.getDifficulty();
+                GameMetric.MetricItem totalSessionsItem = new GameMetric.MetricItem(
+                        GameMetric.MetricType.NUMBER,
+                        totalSessionsPlayed,
+                        0,
+                        0,
+                        "Sesiones totales"
+                );
+                gameMetric.addMetricItem(totalSessionsItem);
 
-                chartPagerAdapter.setExecutionTimeChange((int) cambioTiempo);
-                chartPagerAdapter.setTotalSteps(lastMetric.getStepCount());
-                chartPagerAdapter.setSuccessfulSteps(totalSuccessfulSteps);
-                chartPagerAdapter.setSessionsPlayed(totalSessionsPlayed);
-                chartPagerAdapter.setGamesPlayed(totalGamesPlayed);
-                chartPagerAdapter.setPrescribedSteps(prescribedSteps);
-                chartPagerAdapter.setPrescribedSessions(prescribedSessions);
-                chartPagerAdapter.setDifficultyLevel(difficultyLevel);
+                chartPagerAdapter.setGameMetric(gameMetric);
 
+                // Fecha de la última sesión
                 SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
                 fechaUltimaSesion = dateFormat.format(new Date(lastMetric.getStartTime()));
 
-                runOnUiThread(() -> viewPager.getAdapter().notifyDataSetChanged());
-
-                // Calcular puntaje general de la última sesión
-                calcularPuntajeGeneral(userId, lastMetric, prevMetric);
+                runOnUiThread(() -> {
+                    subtitleText.setText(fechaUltimaSesion);
+                    viewPager.getAdapter().notifyDataSetChanged();
+                    updateChartTitleAndDescription(viewPager.getCurrentItem());
+                });
             }
 
             @Override
@@ -188,30 +147,53 @@ public class LastSessionActivity extends BaseActivity {
         });
     }
 
-    private void calcularPuntajeGeneral(String userId, Metric lastMetric, Metric prevMetric) {
-        boolean modoValidacion = prescribedSteps == 0;
+    private void updateChartTitleAndDescription(int position) {
+        if (chartPagerAdapter.getGameMetric() == null) return;
+        List<GameMetric.MetricItem> metrics = chartPagerAdapter.getGameMetric().getMetricsList();
+        if (position < 0 || position >= metrics.size()) return;
 
-        double lastAvgTime = lastMetric.getAverageTime();
-        int movimientosExitosos = lastMetric.getTrueCount();
-        int lastStepCount = lastMetric.getStepCount();
-        double prevAvgTime = prevMetric != null ? prevMetric.getAverageTime() : -1;
+        GameMetric.MetricItem item = metrics.get(position);
+        chartTitle.setText(item.getLabel());
+        chartDescription.setText(getDescriptionForMetric(item));
+    }
 
-        double puntajeGeneral;
-        if (!modoValidacion) {
-            puntajeGeneral = Math.min(1.0, (double) movimientosExitosos / Math.max(1, prescribedSteps));
-        } else {
-            double precisionMovimientos = Math.min(1.0, (double) movimientosExitosos / Math.max(1, lastStepCount));
-            double mejoraTiempo = 0;
-            if (prevAvgTime > 0) {
-                mejoraTiempo = (prevAvgTime - lastAvgTime) / prevAvgTime;
-                mejoraTiempo = Math.max(0, Math.min(1.0, mejoraTiempo));
-            }
-            puntajeGeneral = 0.7 * precisionMovimientos + 0.3 * mejoraTiempo;
+
+    private Metric findPreviousMetric(List<Metric> allMetrics, Metric lastMetric) {
+        List<Metric> filtered = allMetrics.stream()
+                .filter(m -> m.getGameName().equalsIgnoreCase(lastMetric.getGameName()))
+                .sorted(Comparator.comparingLong(Metric::getStartTime).reversed())
+                .collect(Collectors.toList());
+        return filtered.size() > 1 ? filtered.get(1) : null;
+    }
+
+    private String getDescriptionForMetric(GameMetric.MetricItem item) {
+        switch (item.getType()) {
+            case SCORE:
+                return "Evaluación general del desempeño del paciente basada en múltiples métricas.";
+            case RATIO:
+                if (item.getLabel().toLowerCase().contains("movimiento")) {
+                    return "Proporción de movimientos exitosos sobre el total de intentos.";
+                }
+                else if (item.getLabel().toLowerCase().contains("rondas")) {
+                    return "Proporción de rondas exitosas sobre el total de rondas establecidas.";
+                } else return "";
+            case NUMBER:
+                if (item.getLabel().toLowerCase().contains("sesiones")) {
+                    return "Cantidad total de sesiones realizadas por el paciente.";
+                } else return "";
+            case TIME_TEXT:
+                return "Cambio porcentual en el tiempo promedio por movimiento en comparación a la anteúltima sesion.";
+            case TEXT:
+                if (item.getLabel().toLowerCase().contains("dificultad")) {
+                    return "Nivel de dificultad de la última sesión jugada.";
+                } else return "";
+            case PIE_CHART:
+                return "Precisión por botón en la última sesión.";
+            case BAR_CHART:
+                return "Tiempo promedio por botón en la última sesión. Un menor tiempo indica mejor rendimiento";
+            default:
+                return "";
         }
-
-        int puntajeFinal = (int) (puntajeGeneral * 100);
-        chartPagerAdapter.setGeneralScore(puntajeFinal);
-        runOnUiThread(() -> viewPager.getAdapter().notifyDataSetChanged());
     }
 
     private String getRandomMotivationalPhrase() {

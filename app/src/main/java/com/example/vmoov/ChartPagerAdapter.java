@@ -1,206 +1,138 @@
 package com.example.vmoov;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.util.Log;
+import android.graphics.PorterDuff;
+import android.graphics.Typeface;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.ViewGroup;
+import android.widget.GridLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import com.example.vmoov.GameMetric.ButtonAccuracy;
+
+
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import com.github.mikephil.charting.charts.PieChart;
+
 import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
     private final Context context;
-    private int[] chartData = new int[4]; // Datos de los gráficos
-    private int prescribedSessions = 1; // Sesiones recetadas
-    private int prescribedSteps = 1; // Pasos recetados
-    private int totalSteps = 1;
-    private int successfulSteps = 0;
-    private int gamesPlayed = 0; //
-    private int sessionsPlayed = 0; //
-    private int executionTimeChange = 0; // Cambio porcentual en tiempo de ejecución
-    private int generalScore = 0; // Nueva variable para almacenar el puntaje general
-    private int difficultyLevel = 0; // Nivel por defecto
+    private GameMetric gameMetric;
+    private static final int VIEW_TYPE_RATIO = 0;
+    private static final int VIEW_TYPE_TIME_TEXT = 1;
+    private static final int VIEW_TYPE_SCORE = 2;
+    private static final int VIEW_TYPE_NUMBER = 3;
+    private static final int VIEW_TYPE_TEXT = 4;
+    private static final int VIEW_TYPE_PIE_CHART = 5; // Para precisión por botón
 
-    private static final int VIEW_TYPE_RATIO = 0;  // Para mostrar resultado/total
-    private static final int VIEW_TYPE_TEXT = 1;
-    private static final int VIEW_TYPE_SCORE = 2; // Nueva vista para el Puntaje General
-    private static final int VIEW_TYPE_NUMBER = 3; // Para cantidad sesiones
-    private static final int VIEW_TYPE_DIFFICULTY = 4; // Para dificultad
-
+    private static final int VIEW_TYPE_BAR_CHART= 6; // avgTime por boton
 
     public ChartPagerAdapter(Context context) {
         this.context = context;
     }
 
-   public void setGamesPlayed(int gamesPlayed) {
-        this.gamesPlayed = gamesPlayed;
+    public void setGameMetric(GameMetric metric) {
+        this.gameMetric = metric;
         notifyDataSetChanged();
     }
 
-    public void setSessionsPlayed(int sessionsPlayed) {
-        this.sessionsPlayed = sessionsPlayed;
-        notifyDataSetChanged();
+    @Override
+    public int getItemCount() {
+        return gameMetric != null ? gameMetric.getMetricsList().size() : 0;
     }
 
-    public void setTotalSteps(int totalSteps) {
-        this.totalSteps = Math.max(totalSteps, 1);
-        notifyDataSetChanged();
-    }
-
-    public void setSuccessfulSteps(int steps) {
-        this.successfulSteps = steps;
-        notifyDataSetChanged();
-    }
-
-    public void setPrescribedSteps(int steps) {
-        this.prescribedSteps = steps > 0 ? steps : 1;
-        notifyDataSetChanged();
-    }
-
-    public void setPrescribedSessions(int sessions) {
-        this.prescribedSessions = sessions > 0 ? sessions : 1;
-        notifyDataSetChanged();
-    }
-
-    public void setExecutionTimeChange(int change) {
-        this.executionTimeChange = change;
-        notifyDataSetChanged();
-    }
-    public void setGeneralScore(int score) {
-        this.generalScore = score;
-        Log.d("ChartPagerAdapter", "🔵 setGeneralScore() - Puntaje General recibido: " + score);
-
-        // Asegurar que la actualización se hace en el hilo principal
-        new Handler(Looper.getMainLooper()).post(() -> {
-            Log.d("ChartPagerAdapter", "🟢 Notificando cambio en RecyclerView con nuevo Puntaje General.");
-            notifyDataSetChanged();
-        });
-    }
-
-
-    public void setDifficultyLevel(int level) {
-        this.difficultyLevel = level;
-        notifyDataSetChanged();
+    public GameMetric getGameMetric() {
+        return gameMetric;
     }
 
 
     @Override
     public int getItemViewType(int position) {
-        switch (position) {
-            case 0:
-                return VIEW_TYPE_SCORE; // 🔹 Puntaje General
-            case 1:
-                return VIEW_TYPE_TEXT; // 🔹 Tiempo Promedio
-            case 2:
-                return VIEW_TYPE_RATIO; // 🔹 Movimientos Exitosos
-            case 3:
-                return modoValidacion ? VIEW_TYPE_NUMBER : VIEW_TYPE_RATIO; // 🔹 Sesiones Completadas
-            case 4:
-                return VIEW_TYPE_DIFFICULTY; //dificultad
-
-            default:
-                return VIEW_TYPE_RATIO;
+        if (gameMetric == null) return VIEW_TYPE_RATIO;
+        GameMetric.MetricItem item = gameMetric.getMetricsList().get(position);
+        switch (item.getType()) {
+            case SCORE: return VIEW_TYPE_SCORE;
+            case NUMBER: return VIEW_TYPE_NUMBER;
+            case TIME_TEXT: return VIEW_TYPE_TIME_TEXT;
+            case TEXT: return VIEW_TYPE_TEXT;
+            case PIE_CHART: return VIEW_TYPE_PIE_CHART;
+            case BAR_CHART : return VIEW_TYPE_BAR_CHART;
+            default: return VIEW_TYPE_RATIO;
         }
     }
-
 
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        if (viewType == VIEW_TYPE_TEXT) {
-            View view = LayoutInflater.from(context).inflate(R.layout.fragment_execution_time, parent, false);
-            return new ExecutionTimeViewHolder(view);
-        } else if (viewType == VIEW_TYPE_SCORE) {
-            View view = LayoutInflater.from(context).inflate(R.layout.fragment_score, parent, false);
-            return new ScoreViewHolder(view);
-        } else if (viewType == VIEW_TYPE_NUMBER) {
-            View view = LayoutInflater.from(context).inflate(R.layout.fragment_number, parent, false);
-            return new NumberViewHolder(view);
-        }
-        else if (viewType == VIEW_TYPE_DIFFICULTY) {
-            View view = LayoutInflater.from(context).inflate(R.layout.fragment_difficulty, parent, false);
-            return new DifficultyViewHolder(view);
-        }
-        else {
-            View view = LayoutInflater.from(context).inflate(R.layout.fragment_ratio, parent, false);
-            return new RatioViewHolder(view);
+        LayoutInflater inflater = LayoutInflater.from(context);
+        switch (viewType) {
+            case VIEW_TYPE_TIME_TEXT:
+                return new TimeTextViewHolder(inflater.inflate(R.layout.fragment_execution_time, parent, false));
+            case VIEW_TYPE_SCORE:
+                return new ScoreViewHolder(inflater.inflate(R.layout.fragment_score, parent, false));
+            case VIEW_TYPE_NUMBER:
+                return new NumberViewHolder(inflater.inflate(R.layout.fragment_number, parent, false));
+            case VIEW_TYPE_TEXT:
+                return new TextViewHolder(inflater.inflate(R.layout.fragment_text, parent, false));
+            case VIEW_TYPE_PIE_CHART:
+                return new PieChartViewHolder(inflater.inflate(R.layout.fragment_chart_grid, parent, false));
+            case VIEW_TYPE_BAR_CHART:
+                return new BarChartViewHolder(inflater.inflate(R.layout.fragment_chart_grid, parent, false));
+            default:
+                return new RatioViewHolder(inflater.inflate(R.layout.fragment_ratio, parent, false));
         }
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        Log.d("ChartPagerAdapter", "📌 onBindViewHolder() - Posición: " + position);
+        if (gameMetric == null) return;
+        GameMetric.MetricItem item = gameMetric.getMetricsList().get(position);
 
-        switch (position) {
-            case 0: // 🔹 Puntaje General
-                if (holder instanceof ScoreViewHolder) {
-                    Log.d("ChartPagerAdapter", "🟢 Asignando Puntaje General al ScoreViewHolder: " + generalScore);
-                    ((ScoreViewHolder) holder).bind(generalScore);
+        switch (getItemViewType(position)) {
+            case VIEW_TYPE_SCORE:
+                if (holder instanceof ScoreViewHolder) ((ScoreViewHolder) holder).bind(item.getValue());
+                break;
+            case VIEW_TYPE_TIME_TEXT:
+                if (holder instanceof TimeTextViewHolder) ((TimeTextViewHolder) holder).bind(item.getValue(), item.getLabel());
+                break;
+            case VIEW_TYPE_NUMBER:
+                if (holder instanceof NumberViewHolder) ((NumberViewHolder) holder).bind(item.getValue(), item.getLabel());
+                break;
+            case VIEW_TYPE_TEXT:
+                if (holder instanceof TextViewHolder) ((TextViewHolder) holder).bind(item.getValue(), item.getLabel());
+                break;
+            case VIEW_TYPE_RATIO:
+                if (holder instanceof RatioViewHolder) ((RatioViewHolder) holder).bind(item.getValue(), item.getTotalAbsolute(),item.getLabel());
+                break;
+            case VIEW_TYPE_PIE_CHART:
+                if (holder instanceof PieChartViewHolder) {
+                    ((PieChartViewHolder) holder).bind(item.getButtonAccuracies(), item.getLabel());
                 }
                 break;
-
-            case 1: // 🔹 Tiempo Promedio de ejecución
-                if (holder instanceof ExecutionTimeViewHolder) {
-                    Log.d("ChartPagerAdapter", "🟡 Asignando ExecutionTimeChange: " + executionTimeChange);
-                    ((ExecutionTimeViewHolder) holder).bind(executionTimeChange);
+            case VIEW_TYPE_BAR_CHART:
+                if (holder instanceof BarChartViewHolder) {
+                    ((BarChartViewHolder) holder).bind(item.getButtonAvgTimes(), item.getLabel());
                 }
-                break;
-
-            case 2: // 🔹 Movimientos Exitosos
-                if (holder instanceof RatioViewHolder) {
-                    if (modoValidacion) {
-                        Log.d("ChartPagerAdapter", "🟣 Modo validación activo: mostrando valores absolutos de movimientos.");
-                        ((RatioViewHolder) holder).bind(successfulSteps, totalSteps, "movimientos correctos");
-                    } else {
-                        Log.d("ChartPagerAdapter", "🟡 Mostrando ratio de movimientos exitosos.");
-                        ((RatioViewHolder) holder).bind(successfulSteps, prescribedSteps, "movimientos correctos");
-                    }
-                }
-                break;
-
-            case 3: // Sesiones completadas
-                if (modoValidacion) {
-                    if (holder instanceof NumberViewHolder) {
-                        ((NumberViewHolder) holder).bind(sessionsPlayed, "sesiones completadas");
-                    }
-                } else {
-                    if (holder instanceof RatioViewHolder) {
-                        ((RatioViewHolder) holder).bind(sessionsPlayed, prescribedSessions, "sesiones completadas");
-                    }
-                }
-                break;
-
-           case 4: // 🔹 Nivel de dificultad
-                if (holder instanceof DifficultyViewHolder) {
-                    ((DifficultyViewHolder) holder).bind(difficultyLevel, "");
-                }
-                break;
-
-            default:
-                Log.e("ChartPagerAdapter", "❌ ERROR: ViewHolder en posición inesperada - " + position);
                 break;
         }
     }
 
-    private boolean modoValidacion = false;
-
-    public void setModoValidacion(boolean modoValidacion) {
-        this.modoValidacion = modoValidacion;
-        notifyDataSetChanged();
-    }
-
+    /*** ViewHolders ***/
     public static class RatioViewHolder extends RecyclerView.ViewHolder {
         TextView completedText, totalText, descriptionText;
         ImageView statusImage;
@@ -216,29 +148,77 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         public void bind(int completed, int total, String description) {
             completedText.setText(String.valueOf(completed));
             totalText.setText(String.format(Locale.getDefault(), "/%d", total));
-            descriptionText.setText(description);
-
-            // Cambiar color del número según progreso
+           // descriptionText.setText(description);
+            //seteo  segun valor
             float progress = (total > 0) ? ((float) completed / total) * 100 : 0;
-
             if (progress < 50) {
-                completedText.setTextColor(Color.parseColor("#F18181"));
-                totalText.setTextColor(Color.parseColor("#F18181"));
-                descriptionText.setTextColor(Color.parseColor("#F18181"));
-                statusImage.setImageResource(R.drawable.addpatient);
-            } else if (progress >= 50 && progress < 80) {
-                completedText.setTextColor(Color.parseColor("#F1C40F")); // Naranja
-                totalText.setTextColor(Color.parseColor("#F1C40F"));
-                descriptionText.setTextColor(Color.parseColor("#F1C40F"));
+                int color = Color.parseColor("#F18181");
+                completedText.setTextColor(color);
+                totalText.setTextColor(color);
+                descriptionText.setTextColor(color);
                 statusImage.setImageResource(R.drawable.keep);
+            } else if (progress < 80) {
+                int color = Color.parseColor("#F1C40F");
+                completedText.setTextColor(color);
+                totalText.setTextColor(color);
+                descriptionText.setTextColor(color);
+                statusImage.setImageResource(R.drawable.claps);
+            } else {
+                int color = Color.parseColor("#39e186");
+                completedText.setTextColor(color);
+                totalText.setTextColor(color);
+                descriptionText.setTextColor(color);
+                statusImage.setImageResource(R.drawable.thumbup);
+            }
+
+        }
+    }
+
+
+    public static class TimeTextViewHolder extends RecyclerView.ViewHolder {
+        TextView textView, statusText, percentageSymbol ;
+        ImageView statusImage;
+
+        public TimeTextViewHolder(@NonNull View itemView)
+        {
+            super(itemView);
+            textView = itemView.findViewById(R.id.percentage_text);
+            statusText = itemView.findViewById(R.id.status_text);
+            percentageSymbol = itemView.findViewById(R.id.percentage_symbol);
+            statusImage = itemView.findViewById(R.id.bottom_image);
+        }
+        public void bind(int value, String label)
+        {
+            textView.setText(String.valueOf(value));
+            if (value > 0) {
+                // Más rápido
+                int color = Color.parseColor("#39e186");
+                statusText.setText("Más rápido");
+                statusText.setTextColor(color);
+                statusImage.setImageResource(R.drawable.thumbup);
+                percentageSymbol.setTextColor(color);
+                textView.setTextColor(color);
+
+
+            } else if (value < 0) {
+                // Más lento
+                int color = Color.parseColor("#F18181");
+                statusText.setText("Más lento");
+                statusText.setTextColor(color);
+                statusImage.setImageResource(R.drawable.keep);
+                percentageSymbol.setTextColor(color);
+                textView.setTextColor(color);
 
             } else {
-                completedText.setTextColor(Color.parseColor("#39e186")); // Verde
-                totalText.setTextColor(Color.parseColor("#39e186"));
-                descriptionText.setTextColor(Color.parseColor("#39e186"));
-                statusImage.setImageResource(R.drawable.thumbup);
+                // Sin cambios
+                int color = Color.parseColor("#dfaaff");
+                statusText.setText("Sin cambios");
+                statusText.setTextColor(color);
+                percentageSymbol.setTextColor(color);
+                textView.setTextColor(color);
 
             }
+
         }
     }
 
@@ -255,184 +235,267 @@ public class ChartPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
         public void bind(int number, String description) {
             numberText.setText(String.valueOf(number));
-            descriptionText.setText(description);
-
-            // Opcional: cambiar color según valor
-            if (number < 5) {
-                numberText.setTextColor(Color.parseColor("#F18181"));
-                descriptionText.setTextColor(Color.parseColor("#F18181"));
-                statusImage.setImageResource(R.drawable.keep);
-            } else if (number < 10) {
-                numberText.setTextColor(Color.parseColor("#F1C40F"));
-                descriptionText.setTextColor(Color.parseColor("#F1C40F"));
-                statusImage.setImageResource(R.drawable.claps);
-            } else {
-                numberText.setTextColor(Color.parseColor("#39e186"));
-                descriptionText.setTextColor(Color.parseColor("#39e186"));
-                statusImage.setImageResource(R.drawable.thumbup);
-            }
+           // descriptionText.setText(description);
+            statusImage.setImageResource(R.drawable.claps);
         }
     }
 
-    public static class DifficultyViewHolder extends RecyclerView.ViewHolder {
+    public static class TextViewHolder extends RecyclerView.ViewHolder {
         TextView levelText, descriptionText;
         ImageView statusImage;
 
-        public DifficultyViewHolder(@NonNull View itemView) {
+        public TextViewHolder(@NonNull View itemView) {
             super(itemView);
-            levelText = itemView.findViewById(R.id.level_text);
-            descriptionText = itemView.findViewById(R.id.difficulty_description_text);
-            statusImage = itemView.findViewById(R.id.difficulty_image);
+            levelText = itemView.findViewById(R.id.text);
+            descriptionText = itemView.findViewById(R.id.description_text);
+            statusImage = itemView.findViewById(R.id.status_image);
         }
 
         public void bind(int level, String description) {
-            levelText.setText(String.valueOf(level));
-            descriptionText.setText(description);
 
-
-            if (level < 2) {
-                levelText.setTextColor(Color.parseColor("#F18181"));
-                descriptionText.setTextColor(Color.parseColor("#F18181"));
-                statusImage.setImageResource(R.drawable.easylevel);
-            } else if (level < 3) {
-                levelText.setTextColor(Color.parseColor("#F1C40F"));
-                descriptionText.setTextColor(Color.parseColor("#F1C40F"));
-                statusImage.setImageResource(R.drawable.mediumlevel);
-            } else {
-                levelText.setTextColor(Color.parseColor("#39e186"));
-                descriptionText.setTextColor(Color.parseColor("#39e186"));
-                statusImage.setImageResource(R.drawable.hardlevel);
+            //caso niveles de dificultad
+            if (description != null && description.toLowerCase().contains("dificultad")) {
+                // Elegir la imagen según el nivel
+                int drawableRes;
+                String levelLabel="";
+                switch (level) {
+                    case 0:
+                        levelLabel="Nivel fácil";
+                        drawableRes = R.drawable.easylevel;
+                        break;
+                    case 1:
+                        levelLabel="Nivel medio";
+                        drawableRes = R.drawable.mediumlevel;
+                        break;
+                    case 2:
+                        levelLabel="Nivel dificil";
+                        drawableRes = R.drawable.hardlevel;
+                        break;
+                    default:
+                        drawableRes = R.drawable.easylevel; // fallback
+                }
+                statusImage.setImageResource(drawableRes);
+                levelText.setText(levelLabel);
             }
         }
     }
-
 
 
     public static class ScoreViewHolder extends RecyclerView.ViewHolder {
-        TextView scoreText, statusText,scoreMaxText;
+        TextView scoreText, statusText, scoreMaxText;
         ImageView statusImage;
-
-        public ScoreViewHolder(@NonNull View itemView) {
-            super(itemView);
+        public ScoreViewHolder(@NonNull View itemView)
+        { super(itemView);
             scoreText = itemView.findViewById(R.id.score_text);
-            statusText = itemView.findViewById(R.id.status_text);
             scoreMaxText = itemView.findViewById(R.id.score_max_text);
+            statusText = itemView.findViewById(R.id.status_text);
             statusImage = itemView.findViewById(R.id.status_image);
 
-            // Verificar que los elementos no son null
-            if (scoreText == null) Log.e("ScoreViewHolder", "❌ ERROR: scoreText es NULL");
-            if (statusText == null) Log.e("ScoreViewHolder", "❌ ERROR: statusText es NULL");
-            if (statusImage == null) Log.e("ScoreViewHolder", "❌ ERROR: statusImage es NULL");
         }
-
-        public void bind(int generalScore) {
-            Log.d("ScoreViewHolder", "📌 bind() - Puntaje recibido: " + generalScore);
-
-            if (scoreText == null || statusText == null || statusImage == null) {
-                Log.e("ScoreViewHolder", "❌ ERROR: Un elemento de UI es NULL");
-                return;
-            }
-
-            scoreText.setText(String.format(Locale.getDefault(), "%d", generalScore));
-            scoreMaxText.setText("/100");
-
-            if (generalScore >= 80) {
-                Log.d("ScoreViewHolder", "🏆 ¡Excelente! Puntaje: " + generalScore);
+        public void bind(int score)
+        {
+            scoreText.setText(String.valueOf(score));
+            if (score >= 80) {
                 statusText.setText("¡Excelente!");
-                statusText.setTextColor(Color.parseColor("#39e186"));
-                scoreMaxText.setTextColor(Color.parseColor("#39e186"));
-                scoreText.setTextColor(Color.parseColor("#39e186"));
+                int color = Color.parseColor("#39e186");
+                scoreText.setTextColor(color);
+                statusText.setTextColor(color);
+                scoreMaxText.setTextColor(color);
                 statusImage.setImageResource(R.drawable.thumbup);
-            } else if (generalScore >= 50) {
-                Log.d("ScoreViewHolder", "👍 Buen desempeño. Puntaje: " + generalScore);
-                statusText.setText("¡Buen desempeño!");
-                statusText.setTextColor(Color.parseColor("#F1C40F"));
-                scoreText.setTextColor(Color.parseColor("#F1C40F"));
-                scoreMaxText.setTextColor(Color.parseColor("#F1C40F"));
+            } else if (score >= 50) {
+                statusText.setText("Buen desempeño");
+                int color = Color.parseColor("#F1C40F");
+                scoreText.setTextColor(color);
+                statusText.setTextColor(color);
+                scoreMaxText.setTextColor(color);
                 statusImage.setImageResource(R.drawable.claps);
             } else {
-                Log.d("ScoreViewHolder", "⚠️ Puedes mejorar. Puntaje: " + generalScore);
-                statusText.setText("¡Puedes mejorar!");
-                statusText.setTextColor(Color.parseColor("#F18181"));
-                scoreText.setTextColor(Color.parseColor("#F18181"));
-                scoreMaxText.setTextColor(Color.parseColor("#F18181"));
+                statusText.setText("Puedes mejorar");
+                int color = Color.parseColor("#F18181");
+                scoreText.setTextColor(color);
+                statusText.setTextColor(color);
+                scoreMaxText.setTextColor(color);
                 statusImage.setImageResource(R.drawable.keep);
             }
+
         }
     }
 
 
-    @Override
-    public int getItemCount() {
-        return 5;
-    }
+    public static class PieChartViewHolder extends RecyclerView.ViewHolder {
+        GridLayout gridLayout;
 
-    public static class ChartViewHolder extends RecyclerView.ViewHolder {
-        PieChart pieChart;
-
-        public ChartViewHolder(@NonNull View itemView) {
+        public PieChartViewHolder(@NonNull View itemView) {
             super(itemView);
-            pieChart = itemView.findViewById(R.id.pieChart);
+            gridLayout = itemView.findViewById(R.id.chart_grid);
+        }
+
+        public void bind(List<ButtonAccuracy> buttonAccuracies, String label) {
+            gridLayout.removeAllViews();
+
+            String[] colorNames = {"Rojo", "Azul", "Verde", "Amarillo"};
+
+            // Colores principales (flúo)
+            int[] brightColors = {
+                    Color.parseColor("#FF4C4C"), // rojo fuerte
+                    Color.parseColor("#4C6FFF"), // azul fuerte
+                    Color.parseColor("#00FF72"), // verde flúo
+                    Color.parseColor("#FFF74C")  // amarillo fuerte
+            };
+
+            // Colores pastel (para fondo)
+            int[] pastelColors = {
+                    Color.parseColor("#FFB3B3"),
+                    Color.parseColor("#B3C6FF"),
+                    Color.parseColor("#B3FFD1"),
+                    Color.parseColor("#FFFAB3")
+            };
+
+            for (int i = 0; i < 4; i++) {
+                float value = -1f; // -1 = sin datos
+                boolean hasData = false;
+
+                for (ButtonAccuracy ba : buttonAccuracies) {
+                    if (ba.getButtonId() == i) {
+                        value = ba.getAccuracy();
+                        hasData = ba.hasData();
+                        break;
+                    }
+                }
+
+                LinearLayout container = new LinearLayout(itemView.getContext());
+                container.setOrientation(LinearLayout.VERTICAL);
+                container.setGravity(Gravity.CENTER);
+                container.setPadding(16, 16, 16, 16);
+
+                // Crear el PieChart
+                com.github.mikephil.charting.charts.PieChart pieChart =
+                        new com.github.mikephil.charting.charts.PieChart(itemView.getContext());
+                pieChart.setLayoutParams(new LinearLayout.LayoutParams(400, 400));
+                pieChart.getDescription().setEnabled(false);
+                pieChart.getLegend().setEnabled(false);
+
+                // Fondo pastel (como color base del gráfico)
+                pieChart.setHoleColor(pastelColors[i]);
+
+                // Configurar el centro del gráfico (círculo interno)
+                pieChart.setDrawHoleEnabled(true);
+                pieChart.setHoleRadius(70f); // tamaño del hueco blanco
+                pieChart.setTransparentCircleRadius(0f);
+
+                // Texto central: porcentaje
+                if (hasData && value >= 0) {
+                    ArrayList<PieEntry> pieEntries = new ArrayList<>();
+                    pieEntries.add(new PieEntry(value, ""));
+                    pieEntries.add(new PieEntry(100 - value, ""));
+
+                    PieDataSet dataSet = new PieDataSet(pieEntries, "");
+                    dataSet.setColors(brightColors[i], Color.LTGRAY);
+                    dataSet.setValueTextSize(0f);
+
+                    PieData data = new PieData(dataSet);
+                    pieChart.setData(data);
+
+                    // Mostrar el % en el centro
+                    pieChart.setDrawCenterText(true);
+                    pieChart.setCenterText(String.format("%.0f%%", value));
+                    pieChart.setCenterTextSize(20f);
+                    pieChart.setCenterTextColor(brightColors[i]);
+                } else {
+                    // Si no hay datos, mostrar gris
+                    ArrayList<PieEntry> pieEntries = new ArrayList<>();
+                    pieEntries.add(new PieEntry(100, ""));
+                    PieDataSet dataSet = new PieDataSet(pieEntries, "");
+                    dataSet.setColors(Color.LTGRAY);
+                    dataSet.setValueTextSize(0f);
+
+                    PieData data = new PieData(dataSet);
+                    pieChart.setData(data);
+
+                    pieChart.setDrawCenterText(true);
+                    pieChart.setCenterText("–");
+                    pieChart.setCenterTextSize(20f);
+                    pieChart.setCenterTextColor(Color.DKGRAY);
+                    pieChart.setHoleColor(Color.LTGRAY);
+                }
+
+                pieChart.invalidate();
+
+                // Etiqueta debajo del gráfico (solo el color)
+                TextView labelView = new TextView(itemView.getContext());
+                labelView.setText(colorNames[i]);
+                labelView.setTextColor(brightColors[i]);
+                labelView.setGravity(Gravity.CENTER);
+                labelView.setTextSize(14f);
+                labelView.setPadding(0, 8, 0, 0);
+
+                container.addView(pieChart);
+                container.addView(labelView);
+                gridLayout.addView(container);
+            }
         }
     }
 
-    public static class ExecutionTimeViewHolder extends RecyclerView.ViewHolder {
-        TextView percentageText, statusText, percentageSymb;
-        ImageView rightImage;
+    public static class BarChartViewHolder extends RecyclerView.ViewHolder {
+        private GridLayout gridLayout;
 
-        public ExecutionTimeViewHolder(@NonNull View itemView) {
+        public BarChartViewHolder(@NonNull View itemView) {
             super(itemView);
-            percentageText = itemView.findViewById(R.id.percentage_text);
-            percentageSymb = itemView.findViewById(R.id.percentage_symbol);
-            statusText = itemView.findViewById(R.id.status_text);
-            rightImage = itemView.findViewById(R.id.bottom_image);
+            gridLayout = itemView.findViewById(R.id.chart_grid);
         }
 
-        public void bind(int executionTimeChange) {
-            if (executionTimeChange < 0) {
-                percentageText.setText(String.format(Locale.getDefault(), "%d", Math.abs(executionTimeChange)));
-                statusText.setText("más rápido");
-                statusText.setTextColor(Color.parseColor("#39e186"));
-                percentageSymb.setTextColor(Color.parseColor("#39e186"));
-                percentageText.setTextColor(Color.parseColor("#39e186"));
-                rightImage.setImageResource(R.drawable.thumbup);
-            } else if (executionTimeChange > 0) {
-                percentageText.setText(String.format(Locale.getDefault(), "%d", executionTimeChange));
-                statusText.setText("más lento");
-                statusText.setTextColor(Color.parseColor("#F18181"));
-                percentageText.setTextColor(Color.parseColor("#F18181"));
-                percentageSymb.setTextColor(Color.parseColor("#F18181"));
-                rightImage.setImageResource(R.drawable.keep);
-            } else {
-                percentageText.setText("0%");
-                statusText.setText("sin cambios");
-                statusText.setTextColor(Color.parseColor("#dfaaff"));
-                percentageText.setTextColor(Color.parseColor("#dfaaff"));
-                percentageSymb.setTextColor(Color.parseColor("#dfaaff"));
-                rightImage.setImageResource(R.drawable.work);
+        public void bind(List<GameMetric.ButtonAvgTime> buttonAvgTimes, String label) {
+            gridLayout.removeAllViews();
+            gridLayout.setColumnCount(2);
+            gridLayout.setRowCount(2);
+
+            for (GameMetric.ButtonAvgTime bat : buttonAvgTimes) {
+                View cell = LayoutInflater.from(gridLayout.getContext())
+                        .inflate(R.layout.item_avg_time_simonbutton_cell, gridLayout, false);
+
+                ImageView icon = cell.findViewById(R.id.avg_time_icon);
+                TextView text = cell.findViewById(R.id.avg_time_text);
+
+                // Configuración del texto
+                if (bat.hasData()) {
+                    text.setText(String.format(Locale.getDefault(), "%.2fs", bat.getAvgTime()));
+                } else {
+                    text.setText("—");
+                }
+
+                // Colores y recursos según el botón
+                int color;
+                int drawableId;
+                switch (bat.getButtonId()) {
+                    case 0: // Verde
+                        color = Color.parseColor("#4CAF50");
+                        drawableId = R.drawable.cronometro_verde;
+                        break;
+                    case 1: // Rojo
+                        color = Color.parseColor("#F44336");
+                        drawableId = R.drawable.cronometro_rojo;
+                        break;
+                    case 2: // Azul
+                        color = Color.parseColor("#2196F3");
+                        drawableId = R.drawable.cronometro_azul;
+                        break;
+                    case 3: // Amarillo
+                        color = Color.parseColor("#FFEB3B");
+                        drawableId = R.drawable.cronometro_amarillo;
+                        break;
+                    default:
+                        color = Color.GRAY;
+                        drawableId = R.drawable.cronometro_verde;
+                }
+
+                icon.setImageResource(drawableId);
+                text.setTextColor(color);
+
+                gridLayout.addView(cell);
             }
         }
     }
 
 
-    private void setupPieChart(PieChart chart, int value, int maxValue, String label) {
-        List<PieEntry> entries = new ArrayList<>();
-        entries.add(new PieEntry(value, label));
-        entries.add(new PieEntry(maxValue - value, ""));
 
-        PieDataSet dataSet = new PieDataSet(entries, "");
-        dataSet.setColors(
-                context.getResources().getColor(R.color.violet, null),
-                context.getResources().getColor(R.color.lightgrey, null)
-        );
-
-        PieData pieData = new PieData(dataSet);
-        chart.setData(pieData);
-        chart.setHoleRadius(60f);
-        chart.setTransparentCircleRadius(65f);
-        dataSet.setDrawValues(true);
-        chart.getDescription().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.invalidate();
-    }
 }

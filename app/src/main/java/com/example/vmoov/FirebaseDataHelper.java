@@ -7,17 +7,17 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import com.example.vmoov.Metric;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class FirebaseDataHelper {
 
-    private static final String TAG = "FirebaseDataHelper";
-
-    // ------------------------------------------------------------------------
-    //  Obtener todas las métricas de un usuario
-    // ------------------------------------------------------------------------
+    /**
+     * Descarga todas las métricas de un usuario desde Firebase.
+     * Devuelve una lista de Metric (una por sesión de juego).
+     */
     public static void fetchAllMetrics(String userId, FirebaseCallback<List<Metric>> callback) {
         DatabaseReference gameplayRef = FirebaseDatabase.getInstance()
                 .getReference("patientmetrics")
@@ -30,148 +30,147 @@ public class FirebaseDataHelper {
                 return;
             }
 
-            List<Metric> allMetrics = new ArrayList<>();
-            DataSnapshot dataSnapshot = task.getResult();
+            List<Metric> metrics = new ArrayList<>();
 
-            for (DataSnapshot gameNode : dataSnapshot.getChildren()) {
+            for (DataSnapshot gameNode : task.getResult().getChildren()) {
                 String gameName = gameNode.getKey();
-                DataSnapshot sessionsNode = gameNode.child("sessions");
-
-                for (DataSnapshot sessionSnapshot : sessionsNode.getChildren()) {
-                    DataSnapshot results = sessionSnapshot.child("results");
-                    Metric metric = processGenericSession(gameName, results);
-                    if (metric != null) allMetrics.add(metric);
+                for (DataSnapshot sessionSnap : gameNode.child("sessions").getChildren()) {
+                    //procesa la sesion segun que juego sea
+                    Metric metric = processSessionSnapshot(gameName, sessionSnap);
+                    if (metric != null) metrics.add(metric);
                 }
             }
 
-            callback.onSuccess(allMetrics);
+            callback.onSuccess(metrics);
         });
     }
 
-    // ------------------------------------------------------------------------
-    //  Procesar sesión genérica (game1, simon, y otros futuros juegos)
-    // ------------------------------------------------------------------------
-    public static Metric processGenericSession(String gameName, DataSnapshot sessionSnapshot) {
-        try {
-            long startTime = sessionSnapshot.child("startTime").getValue(Long.class) != null ?
-                    sessionSnapshot.child("startTime").getValue(Long.class) : 0;
-            long endTime = sessionSnapshot.child("endTime").getValue(Long.class) != null ?
-                    sessionSnapshot.child("endTime").getValue(Long.class) : startTime;
+    /**
+     * Procesa un snapshot individual de sesión y genera un Metric según el juego.
+     */
+    private static Metric processSessionSnapshot(String gameName, DataSnapshot sessionSnap) {
+        //chequea que juego hay que procesar
+        if ("simon".equalsIgnoreCase(gameName)) {
+            return processSimonSession(sessionSnap);
+        } else if ("game1".equalsIgnoreCase(gameName)) {
+            return processGame1Session(sessionSnap);
+        }
+        return null;
+    }
 
-            Integer difficulty = sessionSnapshot.child("difficulty").getValue(Integer.class);
-            if (difficulty == null) difficulty = 0;
+    // ------------------- SIMON -------------------
+    private static Metric processSimonSession(DataSnapshot sessionSnap) {
+        DataSnapshot resultsSnap = sessionSnap.child("results");
+        if (!resultsSnap.exists()) return null;
 
-            Integer maxSteps = sessionSnapshot.child("maxSteps").getValue(Integer.class);
+        // Crea la lista de rounds
+        List<Metric.SimonRound> rounds = new ArrayList<>();
+        int trueCount = 0;
+        double totalTime = 0;
+        int stepCount = 0;
 
-            int trueCount = 0;
-            int stepCount = 0;
-            double totalTime = 0;
-            List<Metric.StepDetail> stepDetails = new ArrayList<>();
+        // ✅ fijate que ahora recorre resultsSnap.child("rounds")
+        for (DataSnapshot roundSnap : resultsSnap.child("rounds").getChildren()) {
+            List<Metric.StepDetail> roundSteps = new ArrayList<>();
+            for (DataSnapshot stepSnap : roundSnap.getChildren()) {
+                Boolean correct = stepSnap.child("correct").getValue(Boolean.class);
+                Double time = stepSnap.child("time").getValue(Double.class);
+                Integer buttonPressed = stepSnap.child("buttonPressed").getValue(Integer.class);
+                Long startTime = stepSnap.child("startTime").getValue(Long.class);
+                Long endTime = stepSnap.child("endTime").getValue(Long.class);
 
-            // GAME 1: pasos planos
-            if (sessionSnapshot.child("steps").exists()) {
-                for (DataSnapshot stepSnap : sessionSnapshot.child("steps").getChildren()) {
-                    Boolean result = stepSnap.child("result").getValue(Boolean.class);
-                    Double time = stepSnap.child("time").getValue(Double.class);
-                    Long stepNumberLong = stepSnap.child("step").getValue(Long.class);
-                    int stepNumber = (stepNumberLong != null) ? stepNumberLong.intValue() : stepCount;
+                boolean result = correct != null && correct;
+                double stepTime = time != null ? time : 0;
 
-                    if (result != null && result) trueCount++;
-                    if (time != null) totalTime += time;
+                if (result) trueCount++;
+                totalTime += stepTime;
+                stepCount++;
 
-                    stepDetails.add(new Metric.StepDetail(
-                            result != null && result,
-                            time != null ? time : 0,
-                            stepNumber
-                    ));
-                    stepCount++;
-                }
+                roundSteps.add(new Metric.StepDetail(result, stepTime, buttonPressed, startTime, endTime));
             }
-
-            // SIMON: rondas con múltiples pasos
-            else if (sessionSnapshot.child("rounds").exists()) {
-                int roundNumber = 0;
-                for (DataSnapshot roundSnap : sessionSnapshot.child("rounds").getChildren()) {
-                    for (DataSnapshot stepSnap : roundSnap.getChildren()) {
-                        Boolean correct = stepSnap.child("correct").getValue(Boolean.class);
-                        Double time = stepSnap.child("time").getValue(Double.class);
-                        Integer buttonPressed = stepSnap.child("buttonPressed").getValue(Integer.class);
-
-                        if (correct != null && correct) trueCount++;
-                        if (time != null) totalTime += time;
-
-                        stepDetails.add(new Metric.StepDetail(
-                                correct != null && correct,
-                                time != null ? time : 0,
-                                roundNumber,
-                                buttonPressed
-                        ));
-                        stepCount++;
-                    }
-                    roundNumber++;
-                }
-            }
-
-            double averageTime = (stepCount > 0) ? totalTime / stepCount : 0;
-            String gameDuration = GameDurationCalculator.calculateGameDuration(startTime, endTime);
-
-            return new Metric(
-                    gameName,
-                    startTime,
-                    endTime,
-                    trueCount,
-                    averageTime,
-                    gameDuration,
-                    stepCount,
-                    stepDetails,
-                    difficulty,
-                    maxSteps
-            );
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error procesando sesión de " + gameName, e);
-            return null;
-        }
-    }
-
-    // ------------------------------------------------------------------------
-    //  Calcular métricas globales a partir de todas las sesiones
-    // ------------------------------------------------------------------------
-    public static GlobalMetrics calculateGlobalMetrics(List<Metric> allMetrics) {
-        if (allMetrics == null || allMetrics.isEmpty()) return null;
-
-        int totalSteps = 0;
-        int totalSuccessfulSteps = 0;
-        double totalAverageTime = 0;
-
-        for (Metric m : allMetrics) {
-            totalSteps += m.getStepCount();
-            totalSuccessfulSteps += m.getTrueCount();
-            totalAverageTime += m.getAverageTime();
+            rounds.add(new Metric.SimonRound(roundSteps));
         }
 
-        double averageTime = allMetrics.size() > 0 ? totalAverageTime / allMetrics.size() : 0;
-        int totalSessions = allMetrics.size();
-        int totalGamesPlayed = (int) allMetrics.stream().map(Metric::getGameName).distinct().count();
+        double avgTime = stepCount > 0 ? totalTime / stepCount : 0;
 
-        return new GlobalMetrics(totalSteps, totalSuccessfulSteps, totalSessions, totalGamesPlayed, averageTime);
+        // ✅ también leer start/end/difficulty desde resultsSnap
+        long start = resultsSnap.child("startTime").getValue(Long.class) != null
+                ? resultsSnap.child("startTime").getValue(Long.class)
+                : 0;
+        long end = resultsSnap.child("endTime").getValue(Long.class) != null
+                ? resultsSnap.child("endTime").getValue(Long.class)
+                : start;
+        int difficulty = resultsSnap.child("difficulty").getValue(Integer.class) != null
+                ? resultsSnap.child("difficulty").getValue(Integer.class)
+                : 0;
+        Integer maxSteps = resultsSnap.child("maxSteps").getValue(Integer.class);
+
+        String duration = MetricsCalculator.formatDuration(start, end);
+
+        return new Metric(
+                "simon",
+                start,
+                end,
+                trueCount,
+                avgTime,
+                duration,
+                stepCount,
+                null, // game1 steps
+                difficulty,
+                maxSteps,
+                rounds
+        );
     }
 
-    public static class GlobalMetrics {
-        public final int totalSteps;
-        public final int totalSuccessfulSteps;
-        public final int totalSessions;
-        public final int totalGamesPlayed;
-        public final double averageTime;
 
-        public GlobalMetrics(int totalSteps, int totalSuccessfulSteps, int totalSessions, int totalGamesPlayed, double averageTime) {
-            this.totalSteps = totalSteps;
-            this.totalSuccessfulSteps = totalSuccessfulSteps;
-            this.totalSessions = totalSessions;
-            this.totalGamesPlayed = totalGamesPlayed;
-            this.averageTime = averageTime;
+    // ------------------- GAME 1 -------------------
+    private static Metric processGame1Session(DataSnapshot sessionSnap) {
+        DataSnapshot resultsSnap = sessionSnap.child("results");
+        if (!resultsSnap.exists()) return null;
+
+        List<Metric.StepDetail> stepDetails = new ArrayList<>();
+        int trueCount = 0;
+        double totalTime = 0;
+        int stepCount = 0;
+
+        //recorre todos los steps
+        for (DataSnapshot stepSnap : resultsSnap.child("steps").getChildren()) {
+            Boolean result = stepSnap.child("result").getValue(Boolean.class);
+            Double time = stepSnap.child("time").getValue(Double.class);
+            Long stepNum = stepSnap.child("step").getValue(Long.class);
+            Long startTime = stepSnap.child("startTime").getValue(Long.class);
+            Long endTime = stepSnap.child("endTime").getValue(Long.class);
+            int stepNumber = stepNum != null ? stepNum.intValue() : stepCount;
+
+            boolean isTrue = result != null && result;
+            double stepTime = time != null ? time : 0;
+
+            if (isTrue) trueCount++;
+            totalTime += stepTime;
+
+            // Usamos el constructor de Game1
+            stepDetails.add(new Metric.StepDetail(isTrue, stepTime, stepNumber, startTime, endTime));
+            stepCount++;
         }
+
+        double avgTime = stepCount > 0 ? totalTime / stepCount : 0;
+
+        //parametros generales de la session
+        long start = resultsSnap.child("startTime").getValue(Long.class) != null
+                ? resultsSnap.child("startTime").getValue(Long.class)
+                : 0;
+        long end = resultsSnap.child("endTime").getValue(Long.class) != null
+                ? resultsSnap.child("endTime").getValue(Long.class)
+                : start;
+        int difficulty = resultsSnap.child("difficulty").getValue(Integer.class) != null
+                ? resultsSnap.child("difficulty").getValue(Integer.class)
+                : 0;
+
+        String duration = MetricsCalculator.formatDuration(start, end);
+
+        return new Metric("game1", start, end, trueCount, avgTime, duration, stepCount, stepDetails, difficulty, null, null);
     }
+
 
     // ------------------------------------------------------------------------
     //  Obtener prescripciones del paciente
@@ -208,109 +207,14 @@ public class FirebaseDataHelper {
         });
     }
 
-
-    // ------------------------------------------------------------------------
-    //  Procesar steps
-    // ------------------------------------------------------------------------
-
-    public static List<Metric.StepDetail> processStepDetails(String gameName, DataSnapshot sessionSnapshot) {
-        List<Metric.StepDetail> stepDetails = new ArrayList<>();
-
-        if (gameName.equals("game1") && sessionSnapshot.child("steps").exists()) {
-            // GAME1: steps planos con stepNumber
-            for (DataSnapshot stepSnap : sessionSnapshot.child("steps").getChildren()) {
-                Boolean result = stepSnap.child("result").getValue(Boolean.class);
-                Double time = stepSnap.child("time").getValue(Double.class);
-                Long stepNumberLong = stepSnap.child("step").getValue(Long.class);
-                int stepNumber = stepNumberLong != null ? stepNumberLong.intValue() : stepDetails.size();
-
-                stepDetails.add(new Metric.StepDetail(
-                        result != null && result,
-                        time != null ? time : 0,
-                        stepNumber
-                ));
-            }
-        } else if (gameName.equals("simon") && sessionSnapshot.child("rounds").exists()) {
-            // SIMON: cada round tiene steps
-            int roundNumber = 0;
-            for (DataSnapshot roundSnap : sessionSnapshot.child("rounds").getChildren()) {
-                for (DataSnapshot stepSnap : roundSnap.getChildren()) {
-                    Boolean correct = stepSnap.child("correct").getValue(Boolean.class);
-                    Double time = stepSnap.child("time").getValue(Double.class);
-                    Integer buttonPressed = stepSnap.child("buttonPressed").getValue(Integer.class);
-
-                    stepDetails.add(new Metric.StepDetail(
-                            correct != null && correct,
-                            time != null ? time : 0,
-                            roundNumber,
-                            buttonPressed
-                    ));
-                }
-                roundNumber++;
-            }
-        }
-
-        return stepDetails;
-    }
-
-
-    // ------------------------------------------------------------------------
-    //  Calcular estadistitcas por boton: %aciertos y tiempo promedio
-    // ------------------------------------------------------------------------
-    public static class ButtonStats {
-        public final int button;
-        public final int correctCount;
-        public final int totalCount;
-        public final double precision;      // 0..1
-        public final double averageTime;    // en segundos
-
-        public ButtonStats(int button, int correctCount, int totalCount, double precision, double averageTime) {
-            this.button = button;
-            this.correctCount = correctCount;
-            this.totalCount = totalCount;
-            this.precision = precision;
-            this.averageTime = averageTime;
-        }
-    }
-
-    public static List<ButtonStats> calculateButtonStats(List<Metric.StepDetail> stepDetails) {
-        // Map<boton, List<StepDetail>>
-        Map<Integer, List<Metric.StepDetail>> map = new HashMap<>();
-
-        for (Metric.StepDetail step : stepDetails) {
-            if (step.getButtonPressed() == null) continue; // ignorar game1
-            map.computeIfAbsent(step.getButtonPressed(), k -> new ArrayList<>()).add(step);
-        }
-
-        List<ButtonStats> statsList = new ArrayList<>();
-        for (Map.Entry<Integer, List<Metric.StepDetail>> entry : map.entrySet()) {
-            int button = entry.getKey();
-            List<Metric.StepDetail> steps = entry.getValue();
-
-            int total = steps.size();
-            int correct = 0;
-            double totalTime = 0;
-
-            for (Metric.StepDetail s : steps) {
-                if (s.isResult()) correct++;
-                totalTime += s.getTime();
-            }
-
-            double precision = total > 0 ? (double) correct / total : 0;
-            double avgTime = total > 0 ? totalTime / total : 0;
-
-            statsList.add(new ButtonStats(button, correct, total, precision, avgTime));
-        }
-
-        return statsList;
-    }
-
-
-    // ------------------------------------------------------------------------
-    //  Interfaz genérica para callbacks Firebase
-    // ------------------------------------------------------------------------
+    //para manejar los callbacks
     public interface FirebaseCallback<T> {
         void onSuccess(T result);
         void onFailure(Exception e);
     }
+
+
 }
+
+
+

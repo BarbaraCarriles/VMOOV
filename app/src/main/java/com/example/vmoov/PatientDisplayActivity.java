@@ -27,7 +27,7 @@ public class PatientDisplayActivity extends BaseActivity {
     private List<Metric> metricsList;
     private List<Metric> filteredMetricsList;
     private TextView patientNameTextView;
-    private Spinner spinnerMonth, spinnerOrder;
+    private Spinner spinnerMonth, spinnerOrder, spinnerGame;
     private CardView backCard;
 
     private static final String TAG = "PatientDisplayActivity";
@@ -43,6 +43,8 @@ public class PatientDisplayActivity extends BaseActivity {
         backCard = findViewById(R.id.back_card);
         spinnerMonth = findViewById(R.id.spinner_month);
         spinnerOrder = findViewById(R.id.spinner_order);
+        spinnerGame = findViewById(R.id.spinner_game);
+
 
         metricsList = new ArrayList<>();
         filteredMetricsList = new ArrayList<>();
@@ -84,6 +86,21 @@ public class PatientDisplayActivity extends BaseActivity {
             @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { applyFiltersAndSorting(); }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
+
+        //spinner nombre del juego
+        ArrayAdapter<CharSequence> gameAdapter = ArrayAdapter.createFromResource(this,
+                R.array.filter_game_array, android.R.layout.simple_spinner_item);
+        gameAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerGame.setAdapter(gameAdapter);
+        spinnerGame.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                applyFiltersAndSorting();
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
     }
 
     private void fetchPatientName(String patientId) {
@@ -126,12 +143,18 @@ public class PatientDisplayActivity extends BaseActivity {
     private void applyFiltersAndSorting() {
         String selectedMonth = spinnerMonth.getSelectedItem().toString().toLowerCase();
         String selectedOrder = spinnerOrder.getSelectedItem().toString();
+        String selectedGame = spinnerGame.getSelectedItem().toString().toLowerCase();
 
         filteredMetricsList.clear();
 
         for (Metric metric : metricsList) {
             String metricMonth = getMonthFromTimestamp(metric.getStartTime()).toLowerCase();
-            if (selectedMonth.equals("todos") || metricMonth.equals(selectedMonth)) {
+            String metricGame = metric.getGameName() != null ? metric.getGameName().toLowerCase() : "";
+
+            boolean matchesMonth = selectedMonth.equals("todos") || metricMonth.equals(selectedMonth);
+            boolean matchesGame = selectedGame.equals("todos") || metricGame.equals(selectedGame);
+
+            if (matchesMonth && matchesGame) {
                 filteredMetricsList.add(metric);
             }
         }

@@ -43,12 +43,13 @@
         app:layout_constraintEnd_toEndOf="parent"/>
 
     <!-- Contenedor para los Spinners (Filtros) -->
+    <!-- Contenedor para los Spinners (Filtros) -->
     <LinearLayout
         android:id="@+id/filters_container"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center"
+        android:gravity="center_vertical"
         android:padding="12dp"
         android:layout_marginTop="10dp"
         android:paddingHorizontal="20dp"
@@ -63,13 +64,11 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/spinner_background"
-            android:padding="12dp"
+            android:padding="8dp"
             android:spinnerMode="dropdown"
-            android:entries="@array/months_array"/>
+            android:entries="@array/months_array"
+            android:layout_marginEnd="8dp"/>
 
-        <Space
-            android:layout_width="20dp"
-            android:layout_height="match_parent" />
         <!-- Spinner para ordenar datos -->
         <Spinner
             android:id="@+id/spinner_order"
@@ -77,9 +76,24 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/spinner_background"
-            android:padding="12dp"
+            android:padding="8dp"
             android:spinnerMode="dropdown"
-            android:entries="@array/order_array"/>
+            android:entries="@array/order_array"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Spinner para filtrar por juego -->
+        <Spinner
+            android:id="@+id/spinner_game"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/spinner_background"
+            android:padding="8dp"
+            android:spinnerMode="dropdown"
+            android:entries="@array/filter_game_array"
+            android:layout_marginStart="8dp"/>
+
     </LinearLayout>
 
     <!-- CardView para la RecyclerView -->

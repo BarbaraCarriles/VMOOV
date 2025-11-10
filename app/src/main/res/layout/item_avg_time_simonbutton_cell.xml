@@ -1,0 +1,36 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_margin="12dp"
+    android:layout_rowWeight="1"
+    android:layout_columnWeight="1"
+    android:gravity="center">
+
+
+<!-- Imagen del cronómetro -->
+    <ImageView
+        android:id="@+id/avg_time_icon"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/cronometro_verde"
+        android:padding="12dp" />
+
+    <!-- Texto del tiempo promedio -->
+    <TextView
+        android:id="@+id/avg_time_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0.00s"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        android:textSize="30sp"
+        android:shadowColor="#80000000"
+        android:shadowRadius="6"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        android:gravity="center" />
+</FrameLayout>

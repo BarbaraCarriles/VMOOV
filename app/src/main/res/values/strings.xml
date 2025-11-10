@@ -121,5 +121,12 @@
         <item>simon</item>
     </string-array>
 
+    <string-array name="filter_game_array">
+        <item>Todos</item>
+        <item>game1</item>
+        <item>simon</item>
+    </string-array>
+
+
 
 </resources>
